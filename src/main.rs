@@ -141,7 +141,7 @@ fn line(start: (f32, f32), end: (f32, f32)) -> SpriteBundle {
         ..default()
     };
 
-    let color = Color::rgb(0.0, 0.0, 0.0);
+    let color = Color::BLACK;
 
     SpriteBundle {
         sprite: Sprite {
