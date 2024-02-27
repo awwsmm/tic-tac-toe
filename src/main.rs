@@ -1,5 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use dimension_macro_derive::Dimension;
 
 mod splash;
 mod game;
@@ -7,88 +8,18 @@ mod game;
 const GRID_SPACING: f32 = 200.0;
 const HALFSIZE: f32 = GRID_SPACING / 2.0;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension)]
 enum Row {
-    Top,
+    Bottom,
     Middle,
-    Bottom
+    Top,
 }
 
-impl Row {
-    fn position(&self) -> i8 {
-        match self {
-            Row::Top => 1,
-            Row::Middle => 0,
-            Row::Bottom => -1
-        }
-    }
-
-    fn y_range(&self) -> Vec2 {
-        match self {
-            Row::Top => Vec2::new(HALFSIZE, 3.0*HALFSIZE),
-            Row::Middle => Vec2::new(-HALFSIZE, HALFSIZE),
-            Row::Bottom => Vec2::new(-3.0*HALFSIZE, -HALFSIZE)
-        }
-    }
-
-    fn contains(&self, y: f32) -> bool {
-        let Vec2 { x: min, y: max } = self.y_range();
-        min <= y && y < max
-    }
-
-    fn in_row(y: f32) -> Option<Row> {
-        if Row::Top.contains(y) {
-            Some(Row::Top)
-        } else if Row::Middle.contains(y) {
-            Some(Row::Middle)
-        } else if Row::Bottom.contains(y) {
-            Some(Row::Bottom)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension)]
 enum Column {
     Left,
     Middle,
     Right
-}
-
-impl Column {
-    fn position(&self) -> i8 {
-        match self {
-            Column::Left => -1,
-            Column::Middle => 0,
-            Column::Right => 1
-        }
-    }
-
-    fn x_range(&self) -> Vec2 {
-        match self {
-            Column::Left => Vec2::new(-3.0*HALFSIZE, -HALFSIZE),
-            Column::Middle => Vec2::new(-HALFSIZE, HALFSIZE),
-            Column::Right => Vec2::new(HALFSIZE, 3.0*HALFSIZE)
-        }
-    }
-
-    fn contains(&self, x: f32) -> bool {
-        let Vec2 { x: min, y: max } = self.x_range();
-        min <= x && x < max
-    }
-
-    fn in_column(x: f32) -> Option<Column> {
-        if Column::Left.contains(x) {
-            Some(Column::Left)
-        } else if Column::Middle.contains(x) {
-            Some(Column::Middle)
-        } else if Column::Right.contains(x) {
-            Some(Column::Right)
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -107,7 +38,7 @@ struct Grid {}
 
 impl Grid {
     fn hit_square(pos: Vec2) -> Option<Cell> {
-        match (Row::in_row(pos.y), Column::in_column(pos.x)) {
+        match (Row::containing(pos.y), Column::containing(pos.x)) {
             (None, _) | (_, None) => None,
             (Some(row), Some(col)) => Some(Cell::new(row, col))
         }

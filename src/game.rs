@@ -129,8 +129,8 @@ fn capture_clicks(
                         }
                         Entry::Vacant(_) => {
                             let (origin_x, origin_y) = (ww / 2.0, wh / 2.0);
-                            let Vec2 { x: x_min, y: x_max } = cell.column.x_range();
-                            let Vec2 { x: y_min, y: y_max } = cell.row.y_range();
+                            let Vec2 { x: x_min, y: x_max } = cell.column.range();
+                            let Vec2 { x: y_min, y: y_max } = cell.row.range();
 
                             // draw an "X" or an "O" on the board
                             commands.spawn((
