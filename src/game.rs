@@ -79,8 +79,11 @@ fn capture_clicks(
     windows: Query<&Window>,
     mut commands: Commands,
     mut player_turn: ResMut<Mark>,
-    mut state: ResMut<State>
+    mut state: ResMut<State>,
+    asset_server: Res<AssetServer>
 ) {
+    let font = asset_server.load("fonts/larabie.otf");
+
     let window = windows.single();
     let (ww, wh) = (window.resolution.width(), window.resolution.height());
 
@@ -117,6 +120,7 @@ fn capture_clicks(
                                 if *player_turn == Mark::X { "X" } else { "O" },
                                 TextStyle {
                                     font_size: 200.0,
+                                    font: font.clone(),
                                     color: if *player_turn == Mark::X { Color::RED } else { Color::BLUE },
                                     ..default()
                                 }
