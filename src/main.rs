@@ -7,7 +7,7 @@ mod game;
 const GRID_SPACING: f32 = 200.0;
 const HALFSIZE: f32 = GRID_SPACING / 2.0;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum Row {
     Top,
     Middle,
@@ -41,7 +41,7 @@ impl Row {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 enum Column {
     Left,
     Middle,
@@ -149,7 +149,7 @@ fn clear_screen<T: Component>(to_despawn: Query<Entity, With<T>>, mut commands: 
     }
 }
 
-const DEBUG_UI: bool = 1 > 2;
+const DEBUG_UI: bool = false;
 
 fn when_debugging<T: Default>(t: T) -> T {
     if DEBUG_UI { t } else { T::default() }

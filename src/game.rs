@@ -2,11 +2,33 @@ use bevy::input::ButtonState;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
+use bevy::utils::hashbrown::hash_map::Entry;
+use bevy::utils::HashMap;
 
 use crate::*;
 
+#[derive(Resource, Default, PartialEq, Debug, Clone, Copy)]
+enum Mark {
+    #[default]
+    X,
+    O
+}
+
+#[derive(Resource, Default)]
+struct State {
+    marks: HashMap<(Row, Column), Option<Mark>>
+}
+
+impl Mark {
+    fn next(&self) -> Self {
+        if *self == Self::X { Self::O } else { Self::X }
+    }
+}
+
 pub fn plugin(app: &mut App) {
     app
+        .insert_resource(Mark::default())
+        .insert_resource(State::default())
         .add_systems(OnEnter(GameState::Game), setup)
         .add_systems(Update, capture_clicks.run_if(in_state(GameState::Game)));
 }
@@ -54,20 +76,65 @@ fn capture_clicks(
     mut mouse_button_input_events: EventReader<MouseButtonInput>,
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut most_recent_mouse_position: ResMut<MostRecentMousePosition>,
-    windows: Query<&Window>
+    windows: Query<&Window>,
+    mut commands: Commands,
+    mut player_turn: ResMut<Mark>,
+    mut state: ResMut<State>
 ) {
+    let window = windows.single();
+    let (ww, wh) = (window.resolution.width(), window.resolution.height());
+
     for event in mouse_button_input_events.read() {
         if event.button == MouseButton::Left && event.state == ButtonState::Pressed {
             if let Some((row, column)) = Grid::hit_square(most_recent_mouse_position.pos) {
-                info!("Hit the {:?} {:?} square", row, column)
+
+                match state.marks.entry((row, column)) {
+                    Entry::Occupied(_) => {
+                        println!("this cell is already occupied")
+                    }
+                    Entry::Vacant(_) => {
+
+                        let (origin_x, origin_y) = (ww / 2.0, wh / 2.0);
+                        let Vec2 { x: x_min, y: x_max } = column.x_range();
+                        let Vec2 { x: y_min, y: y_max } = row.y_range();
+
+                        commands.spawn(NodeBundle {
+                            style: Style {
+                                position_type: PositionType::Absolute,
+                                left: Val::Px(origin_x + x_min),
+                                top: Val::Px(origin_y - y_max),
+                                width: Val::Px(x_max - x_min),
+                                height: Val::Px(y_max - y_min),
+                                border: when_debugging(UiRect::all(Val::Px(1.0))),
+                                justify_content: JustifyContent::Center,
+                                align_content: AlignContent::Center,
+                                ..default()
+                            },
+                            border_color: when_debugging(Color::RED.into()),
+                            ..default()
+                        }).with_children(|parent| {
+                            parent.spawn(TextBundle::from_section(
+                                if *player_turn == Mark::X { "X" } else { "O" },
+                                TextStyle {
+                                    font_size: 200.0,
+                                    color: if *player_turn == Mark::X { Color::RED } else { Color::BLUE },
+                                    ..default()
+                                }
+                            ));
+                        });
+
+                        state.marks.insert((row, column), Some(*player_turn));
+                        *player_turn = player_turn.next();
+
+                        info!("Hit the {:?} {:?} square", row, column)
+                    }
+                }
             }
         }
     }
 
+    // update the most_recent_mouse_position
     for event in cursor_moved_events.read() {
-        let window = windows.single();
-        let (ww, wh) = (window.resolution.width(), window.resolution.height());
-
         let x = event.position.x - ww / 2.0;
         let y = -event.position.y + wh / 2.0;
 
