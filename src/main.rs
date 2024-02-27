@@ -15,6 +15,14 @@ enum Row {
 }
 
 impl Row {
+    fn position(&self) -> i8 {
+        match self {
+            Row::Top => 1,
+            Row::Middle => 0,
+            Row::Bottom => -1
+        }
+    }
+
     fn y_range(&self) -> Vec2 {
         match self {
             Row::Top => Vec2::new(HALFSIZE, 3.0*HALFSIZE),
@@ -49,6 +57,14 @@ enum Column {
 }
 
 impl Column {
+    fn position(&self) -> i8 {
+        match self {
+            Column::Left => -1,
+            Column::Middle => 0,
+            Column::Right => 1
+        }
+    }
+
     fn x_range(&self) -> Vec2 {
         match self {
             Column::Left => Vec2::new(-3.0*HALFSIZE, -HALFSIZE),
@@ -75,13 +91,25 @@ impl Column {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+struct Cell {
+    row: Row,
+    column: Column
+}
+
+impl Cell {
+    fn new(row: Row, column: Column) -> Self {
+        Self { row, column }
+    }
+}
+
 struct Grid {}
 
 impl Grid {
-    fn hit_square(pos: Vec2) -> Option<(Row, Column)> {
+    fn hit_square(pos: Vec2) -> Option<Cell> {
         match (Row::in_row(pos.y), Column::in_column(pos.x)) {
             (None, _) | (_, None) => None,
-            (Some(row), Some(col)) => Some((row, col))
+            (Some(row), Some(col)) => Some(Cell::new(row, col))
         }
     }
 }
@@ -123,6 +151,7 @@ fn setup(
 ) {
     let mut window = windows.single_mut();
     window.resolution.set(800.0, 800.0);
+    window.resizable = false;
     commands.spawn(Camera2dBundle::default());
 }
 
@@ -143,7 +172,7 @@ fn draw_screen<'a>(commands: &'a mut Commands, state: GameState) -> EntityComman
         ))
 }
 
-fn clear_screen<T: Component>(to_despawn: Query<Entity, With<T>>, mut commands: Commands) {
+fn clear_entities<T: Component>(to_despawn: Query<Entity, With<T>>, mut commands: Commands) {
     for entity in &to_despawn {
         commands.entity(entity).despawn_recursive();
     }

@@ -6,7 +6,7 @@ pub fn plugin(app: &mut App) {
     app
         .add_systems(OnEnter(GameState::Splash), setup)
         .add_systems(Update, start.run_if(in_state(GameState::Splash)))
-        .add_systems(OnExit(GameState::Splash), clear_screen::<GameState>);
+        .add_systems(OnExit(GameState::Splash), clear_entities::<GameState>);
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
