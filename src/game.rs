@@ -61,7 +61,8 @@ pub fn plugin(app: &mut App) {
         .insert_resource(Mark::default())
         .insert_resource(State::default())
         .add_systems(OnEnter(GameState::Game), setup)
-        .add_systems(Update, capture_clicks.run_if(in_state(GameState::Game)));
+        .add_systems(Update, capture_clicks.run_if(in_state(GameState::Game)))
+        .add_systems(PostUpdate, save_most_recent_mouse_position.run_if(in_state(GameState::Game)));
 }
 
 fn setup(mut commands: Commands) {
@@ -119,11 +120,26 @@ fn setup(mut commands: Commands) {
     });
 }
 
-fn capture_clicks(
-    mut mouse_button_input_events: EventReader<MouseButtonInput>,
+fn save_most_recent_mouse_position(
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut most_recent_mouse_position: ResMut<MostRecentMousePosition>,
     windows: Query<&Window>,
+) {
+    let window = windows.single();
+    let (ww, wh) = (window.resolution.width(), window.resolution.height());
+
+    // update the most_recent_mouse_position, using game coordinates (origin at center of screen)
+    for event in cursor_moved_events.read() {
+        let x = event.position.x - ww / 2.0;
+        let y = -event.position.y + wh / 2.0;
+
+        most_recent_mouse_position.pos = Vec2::new(x, y);
+    }
+}
+
+fn capture_clicks(
+    mut mouse_button_input_events: EventReader<MouseButtonInput>,
+    most_recent_mouse_position: Res<MostRecentMousePosition>,
     mut commands: Commands,
     mut player_turn: ResMut<Mark>,
     mut state: ResMut<State>,
@@ -133,9 +149,6 @@ fn capture_clicks(
 ) {
     if state.winner.is_none() {
         let font = asset_server.load("fonts/larabie.otf");
-
-        let window = windows.single();
-        let (ww, wh) = (window.resolution.width(), window.resolution.height());
 
         for event in mouse_button_input_events.read() {
             if event.button == MouseButton::Left && event.state == ButtonState::Pressed {
@@ -175,14 +188,6 @@ fn capture_clicks(
                     }
                 }
             }
-        }
-
-        // update the most_recent_mouse_position, using game coordinates (origin at center of screen)
-        for event in cursor_moved_events.read() {
-            let x = event.position.x - ww / 2.0;
-            let y = -event.position.y + wh / 2.0;
-
-            most_recent_mouse_position.pos = Vec2::new(x, y);
         }
     }
 }
