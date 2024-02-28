@@ -227,24 +227,39 @@ fn game_over(
                 border_color: when_debugging(Color::GREEN.into()),
                 ..default()
             }).with_children(|parent| {
-                parent.spawn(TextBundle::from_section(
-                    format!("{}", info.winner.unwrap().0.to_string()),
-                    TextStyle {
-                        color: info.winner.unwrap().0.color(),
-                        font_size: 50.0,
-                        font: font.clone(),
-                        ..default()
+                match info.winner {
+                    None => {
+                        parent.spawn(TextBundle::from_section(
+                            "It's a tie!",
+                            TextStyle {
+                                color: Color::BLACK,
+                                font_size: 50.0,
+                                font: font.clone(),
+                                ..default()
+                            }
+                        ));
                     }
-                ));
-                parent.spawn(TextBundle::from_section(
-                    " wins!",
-                    TextStyle {
-                        color: Color::BLACK,
-                        font_size: 50.0,
-                        font: font.clone(),
-                        ..default()
+                    Some((winner, _)) => {
+                        parent.spawn(TextBundle::from_section(
+                            format!("{}", winner.to_string()),
+                            TextStyle {
+                                color: info.winner.unwrap().0.color(),
+                                font_size: 50.0,
+                                font: font.clone(),
+                                ..default()
+                            }
+                        ));
+                        parent.spawn(TextBundle::from_section(
+                            " wins!",
+                            TextStyle {
+                                color: Color::BLACK,
+                                font_size: 50.0,
+                                font: font.clone(),
+                                ..default()
+                            }
+                        ));
                     }
-                ));
+                }
             });
 
             // bottom row
@@ -388,11 +403,16 @@ fn capture_clicks(
 
                                 match info.winner {
                                     None => {
-                                        match *current_game_state.get() {
-                                            GameState::XTurn => next_game_state.set(GameState::OTurn),
-                                            GameState::OTurn => next_game_state.set(GameState::XTurn),
-                                            GameState::GameOver => unreachable!("entered capture_clicks() in GameOver state"),
-                                            GameState::GameNotInProgress => unreachable!("entered capture_clicks() in GameNotInProgress state"),
+                                        if info.marks.len() < 9 {
+                                            match *current_game_state.get() {
+                                                GameState::XTurn => next_game_state.set(GameState::OTurn),
+                                                GameState::OTurn => next_game_state.set(GameState::XTurn),
+                                                GameState::GameOver => unreachable!("entered capture_clicks() in GameOver state"),
+                                                GameState::GameNotInProgress => unreachable!("entered capture_clicks() in GameNotInProgress state"),
+                                            }
+                                        } else {
+                                            info!("The game ends in a tie");
+                                            next_game_state.set(GameState::GameOver)
                                         }
                                     }
                                     Some((mark, (from, to))) => {
@@ -400,7 +420,6 @@ fn capture_clicks(
                                         next_game_state.set(GameState::GameOver)
                                     }
                                 }
-
                             }
                         }
                     }
