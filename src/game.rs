@@ -89,23 +89,14 @@ pub fn plugin(app: &mut App) {
     app
         .insert_resource(Mark::default())
         .insert_resource(StateInfo::default())
+        .add_systems(OnEnter(AppState::Game), start_game)
         .init_state::<GameState>()
-        .add_systems(OnEnter(AppState::Game), setup)
-        .add_systems(
-            Update,
-            capture_clicks
-                .run_if(in_state(GameState::XTurn))
-                // .run_if(in_state(GameState::OTurn))
-        )
-        .add_systems(
-            Update,
-            capture_clicks
-                // .run_if(in_state(GameState::XTurn))
-            .run_if(in_state(GameState::OTurn))
-        )
-        .add_systems(PostUpdate, save_most_recent_mouse_position.run_if(in_state(AppState::Game)))
         .add_systems(OnEnter(GameState::XTurn), start_x_turn)
-        .add_systems(OnEnter(GameState::OTurn), start_o_turn);
+        .add_systems(OnEnter(GameState::OTurn), start_o_turn)
+        .add_systems(OnEnter(GameState::GameOver), game_over)
+        .add_systems(Update, capture_clicks.run_if(in_state(GameState::XTurn)))
+        .add_systems(Update, capture_clicks.run_if(in_state(GameState::OTurn)))
+        .add_systems(PostUpdate, save_most_recent_mouse_position.run_if(in_state(AppState::Game)));
 }
 
 fn start_x_turn(mut info: ResMut<StateInfo>) {
@@ -116,7 +107,7 @@ fn start_o_turn(mut info: ResMut<StateInfo>) {
     info.current_player = Some(Mark::O)
 }
 
-fn setup(mut commands: Commands) {
+fn start_game(mut commands: Commands) {
     const GRID_SPACING: f32 = 200.0;
 
     fn cell<'a>(parent: &'a mut ChildBuilder, cell: Cell, border: UiRect) -> EntityCommands<'a> {
@@ -168,6 +159,21 @@ fn setup(mut commands: Commands) {
             cell(parent, Cell::new(Row::Bottom, Column::Middle), UiRect::new(NONE, NONE, THIN, NONE));
             cell(parent, Cell::new(Row::Bottom, Column::Right), UiRect::new(THIN, NONE, THIN, NONE));
         });
+    });
+}
+
+fn game_over(mut commands: Commands) {
+    commands.spawn(NodeBundle {
+        style: Style {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            position_type: PositionType::Absolute,
+            left: Val::ZERO,
+            top: Val::ZERO,
+            ..default()
+        },
+        background_color: Color::rgba(0.0, 0.0, 0.0, 0.5).into(),
+        ..default()
     });
 }
 
