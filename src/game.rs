@@ -329,6 +329,16 @@ fn game_over_buttons(
 
 }
 
+fn convert_window_to_game_coordinates(
+    window: &Window,
+    window_coordinates: Vec2,
+) -> Vec2 {
+    let (ww, wh) = (window.resolution.width(), window.resolution.height());
+    let x = window_coordinates.x - ww / 2.0;
+    let y = -window_coordinates.y + wh / 2.0;
+    Vec2::new(x, y)
+}
+
 fn save_most_recent_mouse_position(
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut most_recent_mouse_position: ResMut<MostRecentMousePosition>,
@@ -336,14 +346,9 @@ fn save_most_recent_mouse_position(
 ) {
     match windows.get_single() {
         Ok(window) => {
-            let (ww, wh) = (window.resolution.width(), window.resolution.height());
-
             // update the most_recent_mouse_position, using game coordinates (origin at center of screen)
             for event in cursor_moved_events.read() {
-                let x = event.position.x - ww / 2.0;
-                let y = -event.position.y + wh / 2.0;
-
-                most_recent_mouse_position.pos = Vec2::new(x, y);
+                most_recent_mouse_position.pos = convert_window_to_game_coordinates(window, event.position);
             }
         }
         Err(_) => {
@@ -429,23 +434,31 @@ fn capture_touches(
     cells: Query<Entity, With<Cell>>,
     query: Query<&Cell>,
     current_game_state: Res<State<GameState>>,
-    mut next_game_state: ResMut<NextState<GameState>>
+    mut next_game_state: ResMut<NextState<GameState>>,
+    windows: Query<&Window>
 ) {
     if info.winner.is_none() {
         let font = asset_server.load("fonts/larabie.otf");
         for finger in touches.iter() {
             if touches.just_pressed(finger.id()) {
-                if let Some(cell) = Grid::hit_square(finger.position()) {
-                    process_input(
-                        &mut info,
-                        cell,
-                        &cells,
-                        &query,
-                        &mut commands,
-                        font.clone(),
-                        &current_game_state,
-                        &mut next_game_state,
-                    )
+                match windows.get_single() {
+                    Ok(window) => {
+                        if let Some(cell) = Grid::hit_square(convert_window_to_game_coordinates(window, finger.position())) {
+                            process_input(
+                                &mut info,
+                                cell,
+                                &cells,
+                                &query,
+                                &mut commands,
+                                font.clone(),
+                                &current_game_state,
+                                &mut next_game_state,
+                            )
+                        }
+                    }
+                    Err(_) => {
+                        warn!("capture_touches was unable to find the window");
+                    }
                 }
             }
         }
