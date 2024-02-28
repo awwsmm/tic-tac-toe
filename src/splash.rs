@@ -105,12 +105,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn start(
     mut query: Query<&Interaction, (Changed<Interaction>, With<Button>)>,
-    mut game_state: ResMut<NextState<AppState>>,
+    mut app_state: ResMut<NextState<AppState>>,
 ) {
     for interaction in &mut query {
         match interaction {
             Interaction::Pressed => {
-                game_state.set(AppState::Game)
+                app_state.set(AppState::Game)
             },
             Interaction::Hovered => {},
             Interaction::None => {},
