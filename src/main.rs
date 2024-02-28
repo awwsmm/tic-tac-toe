@@ -5,24 +5,21 @@ use dimension_macro_derive::Dimension;
 mod splash;
 mod game;
 
-const GRID_SPACING: f32 = 200.0;
-const HALFSIZE: f32 = GRID_SPACING / 2.0;
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
 enum Row {
     Bottom,
     Middle,
     Top,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
 enum Column {
     Left,
     Middle,
     Right
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Component)]
 struct Cell {
     row: Row,
     column: Column

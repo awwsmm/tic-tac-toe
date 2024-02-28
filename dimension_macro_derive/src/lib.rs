@@ -21,7 +21,7 @@ macro_rules! derive_error {
     ($string: tt) => {
         Error::new(Span::call_site(), $string)
             .to_compile_error()
-            .into();
+            .into()
     };
 }
 
@@ -36,6 +36,10 @@ fn impl_dimension_macro(ast: &syn::DeriveInput) -> TokenStream {
 
                     let gen = quote! {
                         impl #name {
+                            fn values() -> [#name; 3] {
+                                [ #name::#first, #name::#second, #name::#third ]
+                            }
+
                             fn position(&self) -> i8 {
                                 match self {
                                     #name::#first => -1,

@@ -1,7 +1,6 @@
 use bevy::input::ButtonState;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::*;
-use bevy::sprite::Anchor;
 use bevy::utils::{HashMap, HashSet};
 use bevy::utils::hashbrown::hash_map::Entry;
 
@@ -66,42 +65,58 @@ pub fn plugin(app: &mut App) {
 }
 
 fn setup(mut commands: Commands) {
+    const GRID_SPACING: f32 = 200.0;
 
-    fn line(start: (f32, f32), end: (f32, f32)) -> SpriteBundle {
-        let thickness = 10.0;
-
-        let start = Vec2::new(start.0, start.1);
-        let end = Vec2::new(end.0, end.1);
-
-        let length = start.distance(end);
-        let angle = Vec2::new(1.0, 0.0).angle_between(end - start);
-        let rotation = Quat::from_rotation_z(angle);
-
-        let transform = Transform {
-            translation: start.extend(0.0),
-            rotation,
-            ..default()
-        };
-
-        let color = Color::BLACK;
-
-        SpriteBundle {
-            sprite: Sprite {
-                color,
-                custom_size: Some(Vec2::new(length, thickness)),
-                anchor: Anchor::CenterLeft,
+    fn cell<'a>(parent: &'a mut ChildBuilder, cell: Cell, border: UiRect) -> EntityCommands<'a> {
+        parent.spawn((
+            NodeBundle {
+                style: Style {
+                    display: Display::Grid,
+                    grid_row: GridPlacement::start((-cell.row.position() + 2) as i16),
+                    grid_column: GridPlacement::start((cell.column.position() + 2) as i16),
+                    justify_items: JustifyItems::Center,
+                    align_items: AlignItems::Center,
+                    border,
+                    ..default()
+                },
+                border_color: Color::BLACK.into(),
                 ..default()
             },
-            transform,
-            ..default()
-        }
+            cell
+        ))
     }
 
-    // create the grid
-    commands.spawn(line((-HALFSIZE, -3.0 * HALFSIZE), (-HALFSIZE, 3.0 * HALFSIZE)));
-    commands.spawn(line((HALFSIZE, -3.0 * HALFSIZE), (HALFSIZE, 3.0 * HALFSIZE)));
-    commands.spawn(line((-3.0 * HALFSIZE, HALFSIZE), (3.0 * HALFSIZE, HALFSIZE)));
-    commands.spawn(line((-3.0 * HALFSIZE, -HALFSIZE), (3.0 * HALFSIZE, -HALFSIZE)));
+    draw_screen(&mut commands, GameState::Game).with_children(|parent| {
+        parent.spawn(NodeBundle {
+            style: Style {
+                display: Display::Grid,
+                grid_template_rows: vec![GridTrack::flex(1.0), GridTrack::flex(1.0), GridTrack::flex(1.0)],
+                grid_template_columns: vec![GridTrack::flex(1.0), GridTrack::flex(1.0), GridTrack::flex(1.0)],
+                width: Val::Px(3.0 * GRID_SPACING),
+                height: Val::Px(3.0 * GRID_SPACING),
+                ..default()
+            },
+            ..default()
+        }).with_children(|parent| {
+            const NONE: Val = Val::ZERO;
+            const THIN: Val = Val::Px(6.0);
+
+            // top row
+            cell(parent, Cell::new(Row::Top, Column::Left), UiRect::new(NONE, THIN, NONE, THIN));
+            cell(parent, Cell::new(Row::Top, Column::Middle), UiRect::new(NONE, NONE, NONE, THIN));
+            cell(parent, Cell::new(Row::Top, Column::Right), UiRect::new(THIN, NONE, NONE, THIN));
+
+            // middle row
+            cell(parent, Cell::new(Row::Middle, Column::Left), UiRect::new(NONE, THIN, NONE, NONE));
+            cell(parent, Cell::new(Row::Middle, Column::Middle), UiRect::new(NONE, NONE, NONE, NONE));
+            cell(parent, Cell::new(Row::Middle, Column::Right), UiRect::new(THIN, NONE, NONE, NONE));
+
+            // bottom row
+            cell(parent, Cell::new(Row::Bottom, Column::Left), UiRect::new(NONE, THIN, THIN, NONE));
+            cell(parent, Cell::new(Row::Bottom, Column::Middle), UiRect::new(NONE, NONE, THIN, NONE));
+            cell(parent, Cell::new(Row::Bottom, Column::Right), UiRect::new(THIN, NONE, THIN, NONE));
+        });
+    });
 }
 
 fn capture_clicks(
@@ -112,7 +127,9 @@ fn capture_clicks(
     mut commands: Commands,
     mut player_turn: ResMut<Mark>,
     mut state: ResMut<State>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
+    cells: Query<Entity, With<Cell>>,
+    query: Query<&Cell>
 ) {
     if state.winner.is_none() {
         let font = asset_server.load("fonts/larabie.otf");
@@ -128,29 +145,15 @@ fn capture_clicks(
                             warn!("this cell is already occupied")
                         }
                         Entry::Vacant(_) => {
-                            let (origin_x, origin_y) = (ww / 2.0, wh / 2.0);
-                            let Vec2 { x: x_min, y: x_max } = cell.column.range();
-                            let Vec2 { x: y_min, y: y_max } = cell.row.range();
 
-                            // draw an "X" or an "O" on the board
-                            commands.spawn((
-                                NodeBundle {
-                                    style: Style {
-                                        position_type: PositionType::Absolute,
-                                        left: Val::Px(origin_x + x_min),
-                                        top: Val::Px(origin_y - y_max),
-                                        width: Val::Px(x_max - x_min),
-                                        height: Val::Px(y_max - y_min),
-                                        border: when_debugging(UiRect::all(Val::Px(1.0))),
-                                        justify_content: JustifyContent::Center,
-                                        align_content: AlignContent::Center,
-                                        ..default()
-                                    },
-                                    border_color: when_debugging(Color::RED.into()),
-                                    ..default()
-                                },
-                                *player_turn
-                            )).with_children(|parent| {
+                            let entities = cells.iter().filter(|e| query.get(*e).unwrap() == &cell).collect::<Vec<Entity>>();
+
+                            assert_eq!(entities.len(), 1);
+
+                            let entity = entities.get(0).unwrap();
+                            let cell = query.get(*entity).unwrap().clone();
+
+                            commands.entity(*entity).with_children(|parent| {
                                 parent.spawn(TextBundle::from_section(
                                     if *player_turn == Mark::X { "X" } else { "O" },
                                     TextStyle {
