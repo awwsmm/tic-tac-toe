@@ -1,5 +1,11 @@
 # Tic Tac Toe
 
+A simple game written in [Rust](https://www.rust-lang.org/) using [Bevy](https://bevyengine.org/).
+
+## Try it!
+
+On desktop or mobile, try it out at https://tic-tac-toe.awwsmm.com/
+
 ## Compiling From Source
 
 ### Prerequisites

@@ -198,7 +198,7 @@ fn game_over(
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::rgba(0.0, 0.0, 0.0, 0.5).into(),
+            background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
             z_index: ZIndex::Global(1),
             ..default()
         },
@@ -213,7 +213,7 @@ fn game_over(
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::rgba(1.0, 1.0, 1.0, 0.75).into(),
+            background_color: Color::rgba(1.0, 1.0, 1.0, 0.85).into(),
             border_color: when_debugging(Color::RED.into()),
             ..default()
         }).with_children(|parent| {
@@ -235,7 +235,7 @@ fn game_over(
                             "It's a tie!",
                             TextStyle {
                                 color: Color::BLACK,
-                                font_size: 50.0,
+                                font_size: 75.0,
                                 font: font.clone(),
                                 ..default()
                             }
@@ -246,7 +246,7 @@ fn game_over(
                             format!("{}", winner.to_string()),
                             TextStyle {
                                 color: info.winner.unwrap().0.color(),
-                                font_size: 50.0,
+                                font_size: 75.0,
                                 font: font.clone(),
                                 ..default()
                             }
@@ -255,7 +255,7 @@ fn game_over(
                             " wins!",
                             TextStyle {
                                 color: Color::BLACK,
-                                font_size: 50.0,
+                                font_size: 75.0,
                                 font: font.clone(),
                                 ..default()
                             }
@@ -264,43 +264,33 @@ fn game_over(
                 }
             });
 
-            // bottom row
-            parent.spawn(NodeBundle {
-                style: Style {
-                    border: when_debugging(UiRect::all(Val::Px(1.0))),
-                    justify_content: JustifyContent::SpaceAround,
-                    ..default()
-                },
-                border_color: when_debugging(Color::BLUE.into()),
-                ..default()
-            }).with_children(|parent| {
-                fn button(parent: &mut ChildBuilder, text: impl Into<String>, color: Color, marker: GameOverButton, font: Handle<Font>) {
-                    parent.spawn((
-                        ButtonBundle {
-                            style: Style {
-                                padding: UiRect::all(Val::Px(10.0)),
-                                ..default()
-                            },
-                            background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
+            fn button(parent: &mut ChildBuilder, text: impl Into<String>, color: Color, marker: GameOverButton, font: Handle<Font>) {
+                parent.spawn((
+                    ButtonBundle {
+                        style: Style {
+                            justify_content: JustifyContent::Center,
+                            padding: UiRect::all(Val::Px(10.0)),
                             ..default()
                         },
-                        marker
-                    )).with_children(|parent| {
-                        parent.spawn(TextBundle::from_section(
-                            text,
-                            TextStyle {
-                                color,
-                                font_size: 30.0,
-                                font: font.clone(),
-                                ..default()
-                            }
-                        ));
-                    });
-                }
+                        background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
+                        ..default()
+                    },
+                    marker
+                )).with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        text,
+                        TextStyle {
+                            color,
+                            font_size: 60.0,
+                            font: font.clone(),
+                            ..default()
+                        }
+                    ));
+                });
+            }
 
-                button(parent, "play again", Color::BLUE, GameOverButton::PlayAgain, font.clone());
-                button(parent, "back to menu", Color::RED, GameOverButton::BackToMenu, font.clone());
-            });
+            button(parent, "play again", Color::BLUE, GameOverButton::PlayAgain, font.clone());
+            button(parent, "back to menu", Color::RED, GameOverButton::BackToMenu, font.clone());
         });
     });
 }
