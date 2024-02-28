@@ -114,7 +114,7 @@ fn start_game(
 
     next_game_state.set(GameState::XTurn);
 
-    const GRID_SPACING: f32 = 200.0;
+    const GRID_SPACING: f32 = 250.0;
 
     fn cell<'a>(parent: &'a mut ChildBuilder, cell: Cell, border: UiRect) -> EntityCommands<'a> {
         parent.spawn((
