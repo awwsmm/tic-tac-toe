@@ -397,8 +397,8 @@ fn process_input(
                                 match *current_game_state.get() {
                                     GameState::XTurn => next_game_state.set(GameState::OTurn),
                                     GameState::OTurn => next_game_state.set(GameState::XTurn),
-                                    GameState::GameOver => unreachable!("entered capture_clicks() in GameOver state"),
-                                    GameState::GameNotInProgress => unreachable!("entered capture_clicks() in GameNotInProgress state"),
+                                    GameState::GameOver => unreachable!("called capture_clicks() in GameOver state"),
+                                    GameState::GameNotInProgress => unreachable!("called capture_clicks() in GameNotInProgress state"),
                                 }
                             } else {
                                 info!("The game ends in a tie");
