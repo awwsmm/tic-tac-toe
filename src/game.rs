@@ -87,8 +87,10 @@ pub fn plugin(app: &mut App) {
         .init_state::<GameState>()
         .add_systems(OnEnter(GameState::XTurn), start_x_turn)
         .add_systems(Update, capture_clicks.run_if(in_state(GameState::XTurn)))
+        .add_systems(Update, capture_touches.run_if(in_state(GameState::XTurn)))
         .add_systems(OnEnter(GameState::OTurn), start_o_turn)
         .add_systems(Update, capture_clicks.run_if(in_state(GameState::OTurn)))
+        .add_systems(Update, capture_touches.run_if(in_state(GameState::OTurn)))
         .add_systems(OnEnter(GameState::GameOver), game_over)
         .add_systems(Update, game_over_buttons.run_if(in_state(GameState::GameOver)))
         .add_systems(OnExit(GameState::GameOver), clear_entities::<Mark>)
@@ -350,6 +352,106 @@ fn save_most_recent_mouse_position(
     }
 }
 
+fn process_input(
+    info: &mut ResMut<StateInfo>,
+    cell: Cell,
+    cells: &Query<Entity, With<Cell>>,
+    query: &Query<&Cell>,
+    commands: &mut Commands,
+    font: Handle<Font>,
+    current_game_state: &Res<State<GameState>>,
+    next_game_state: &mut ResMut<NextState<GameState>>,
+) {
+    match info.marks.entry(cell) {
+        Entry::Occupied(_) => {
+            warn!("this cell is already occupied")
+        }
+        Entry::Vacant(_) => {
+            let entities = cells.iter().filter(|e| query.get(*e).unwrap() == &cell).collect::<Vec<Entity>>();
+
+            match entities.get(0) {
+                None => {
+                    info!("pressed back to menu -- error here")
+                }
+                Some(entity) => {
+                    let cell = query.get(*entity).unwrap().clone();
+                    let mark = info.current_player.unwrap();
+
+                    commands.entity(*entity).with_children(|parent| {
+                        parent.spawn((
+                            TextBundle::from_section(
+                                mark.to_string(),
+                                TextStyle {
+                                    font_size: 200.0,
+                                    font: font.clone(),
+                                    color: mark.color(),
+                                    ..default()
+                                }
+                            ),
+                            mark
+                        ));
+                    });
+
+                    info.marks.insert(cell, Some(mark));
+                    info!("Hit the {:?} cell", cell);
+                    info.winner = info.determine_winner();
+
+                    match info.winner {
+                        None => {
+                            if info.marks.len() < 9 {
+                                match *current_game_state.get() {
+                                    GameState::XTurn => next_game_state.set(GameState::OTurn),
+                                    GameState::OTurn => next_game_state.set(GameState::XTurn),
+                                    GameState::GameOver => unreachable!("entered capture_clicks() in GameOver state"),
+                                    GameState::GameNotInProgress => unreachable!("entered capture_clicks() in GameNotInProgress state"),
+                                }
+                            } else {
+                                info!("The game ends in a tie");
+                                next_game_state.set(GameState::GameOver)
+                            }
+                        }
+                        Some((mark, (from, to))) => {
+                            info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
+                            next_game_state.set(GameState::GameOver)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn capture_touches(
+    touches: Res<Touches>,
+    mut commands: Commands,
+    mut info: ResMut<StateInfo>,
+    asset_server: Res<AssetServer>,
+    cells: Query<Entity, With<Cell>>,
+    query: Query<&Cell>,
+    current_game_state: Res<State<GameState>>,
+    mut next_game_state: ResMut<NextState<GameState>>
+) {
+    if info.winner.is_none() {
+        let font = asset_server.load("fonts/larabie.otf");
+        for finger in touches.iter() {
+            if touches.just_pressed(finger.id()) {
+                if let Some(cell) = Grid::hit_square(finger.position()) {
+                    process_input(
+                        &mut info,
+                        cell,
+                        &cells,
+                        &query,
+                        &mut commands,
+                        font.clone(),
+                        &current_game_state,
+                        &mut next_game_state,
+                    )
+                }
+            }
+        }
+    }
+}
+
 fn capture_clicks(
     mouse_button_input_events: Res<ButtonInput<MouseButton>>,
     most_recent_mouse_position: Res<MostRecentMousePosition>,
@@ -366,64 +468,16 @@ fn capture_clicks(
 
         if mouse_button_input_events.just_pressed(MouseButton::Left) {
             if let Some(cell) = Grid::hit_square(most_recent_mouse_position.pos) {
-                match info.marks.entry(cell) {
-                    Entry::Occupied(_) => {
-                        warn!("this cell is already occupied")
-                    }
-                    Entry::Vacant(_) => {
-                        let entities = cells.iter().filter(|e| query.get(*e).unwrap() == &cell).collect::<Vec<Entity>>();
-
-                        match entities.get(0) {
-                            None => {
-                                info!("pressed back to menu -- error here")
-                            }
-                            Some(entity) => {
-
-                                let cell = query.get(*entity).unwrap().clone();
-                                let mark = info.current_player.unwrap();
-
-                                commands.entity(*entity).with_children(|parent| {
-                                    parent.spawn((
-                                        TextBundle::from_section(
-                                            mark.to_string(),
-                                            TextStyle {
-                                                font_size: 200.0,
-                                                font: font.clone(),
-                                                color: mark.color(),
-                                                ..default()
-                                            }
-                                        ),
-                                        mark
-                                    ));
-                                });
-
-                                info.marks.insert(cell, Some(mark));
-                                info!("Hit the {:?} cell", cell);
-                                info.winner = info.determine_winner();
-
-                                match info.winner {
-                                    None => {
-                                        if info.marks.len() < 9 {
-                                            match *current_game_state.get() {
-                                                GameState::XTurn => next_game_state.set(GameState::OTurn),
-                                                GameState::OTurn => next_game_state.set(GameState::XTurn),
-                                                GameState::GameOver => unreachable!("entered capture_clicks() in GameOver state"),
-                                                GameState::GameNotInProgress => unreachable!("entered capture_clicks() in GameNotInProgress state"),
-                                            }
-                                        } else {
-                                            info!("The game ends in a tie");
-                                            next_game_state.set(GameState::GameOver)
-                                        }
-                                    }
-                                    Some((mark, (from, to))) => {
-                                        info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
-                                        next_game_state.set(GameState::GameOver)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                process_input(
+                    &mut info,
+                    cell,
+                    &cells,
+                    &query,
+                    &mut commands,
+                    font.clone(),
+                    &current_game_state,
+                    &mut next_game_state,
+                )
             }
         }
     }
