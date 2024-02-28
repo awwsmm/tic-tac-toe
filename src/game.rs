@@ -1,3 +1,5 @@
+use std::fmt::Formatter;
+
 use bevy::input::ButtonState;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::prelude::*;
@@ -13,13 +15,40 @@ enum Mark {
     O
 }
 
-#[derive(Resource, Default)]
-struct State {
-    marks: HashMap<Cell, Option<Mark>>,
-    winner: Option<(Mark, (Cell, Cell))>
+impl std::fmt::Display for Mark {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mark::X => write!(f, "X"),
+            Mark::O => write!(f, "O"),
+        }
+    }
 }
 
-impl State {
+impl Mark {
+    fn color(&self) -> Color {
+        match self {
+            Mark::X => Color::RED,
+            Mark::O => Color::BLUE,
+        }
+    }
+}
+
+#[derive(States, Clone, Hash, PartialEq, Eq, Debug, Default)]
+enum GameState {
+    #[default]
+    XTurn,
+    OTurn,
+    GameOver
+}
+
+#[derive(Resource, Default)]
+struct StateInfo {
+    marks: HashMap<Cell, Option<Mark>>,
+    winner: Option<(Mark, (Cell, Cell))>,
+    current_player: Option<Mark>
+}
+
+impl StateInfo {
     fn determine_winner(&self) -> Option<(Mark, (Cell, Cell))> {
         let winning_arrangements: [(fn(&(&Cell, &Option<Mark>)) -> bool, (Cell, Cell)); 8] = [
             (|(Cell { row, .. }, _)| *row == Row::Top, (Cell::new(Row::Top, Column::Left), Cell::new(Row::Top, Column::Right))),
@@ -59,10 +88,32 @@ impl Mark {
 pub fn plugin(app: &mut App) {
     app
         .insert_resource(Mark::default())
-        .insert_resource(State::default())
-        .add_systems(OnEnter(GameState::Game), setup)
-        .add_systems(Update, capture_clicks.run_if(in_state(GameState::Game)))
-        .add_systems(PostUpdate, save_most_recent_mouse_position.run_if(in_state(GameState::Game)));
+        .insert_resource(StateInfo::default())
+        .init_state::<GameState>()
+        .add_systems(OnEnter(AppState::Game), setup)
+        .add_systems(
+            Update,
+            capture_clicks
+                .run_if(in_state(GameState::XTurn))
+                // .run_if(in_state(GameState::OTurn))
+        )
+        .add_systems(
+            Update,
+            capture_clicks
+                // .run_if(in_state(GameState::XTurn))
+            .run_if(in_state(GameState::OTurn))
+        )
+        .add_systems(PostUpdate, save_most_recent_mouse_position.run_if(in_state(AppState::Game)))
+        .add_systems(OnEnter(GameState::XTurn), start_x_turn)
+        .add_systems(OnEnter(GameState::OTurn), start_o_turn);
+}
+
+fn start_x_turn(mut info: ResMut<StateInfo>) {
+    info.current_player = Some(Mark::X)
+}
+
+fn start_o_turn(mut info: ResMut<StateInfo>) {
+    info.current_player = Some(Mark::O)
 }
 
 fn setup(mut commands: Commands) {
@@ -87,7 +138,7 @@ fn setup(mut commands: Commands) {
         ))
     }
 
-    draw_screen(&mut commands, GameState::Game).with_children(|parent| {
+    draw_screen(&mut commands, AppState::Game).with_children(|parent| {
         parent.spawn(NodeBundle {
             style: Style {
                 display: Display::Grid,
@@ -125,15 +176,21 @@ fn save_most_recent_mouse_position(
     mut most_recent_mouse_position: ResMut<MostRecentMousePosition>,
     windows: Query<&Window>,
 ) {
-    let window = windows.single();
-    let (ww, wh) = (window.resolution.width(), window.resolution.height());
+    match windows.get_single() {
+        Ok(window) => {
+            let (ww, wh) = (window.resolution.width(), window.resolution.height());
 
-    // update the most_recent_mouse_position, using game coordinates (origin at center of screen)
-    for event in cursor_moved_events.read() {
-        let x = event.position.x - ww / 2.0;
-        let y = -event.position.y + wh / 2.0;
+            // update the most_recent_mouse_position, using game coordinates (origin at center of screen)
+            for event in cursor_moved_events.read() {
+                let x = event.position.x - ww / 2.0;
+                let y = -event.position.y + wh / 2.0;
 
-        most_recent_mouse_position.pos = Vec2::new(x, y);
+                most_recent_mouse_position.pos = Vec2::new(x, y);
+            }
+        }
+        Err(_) => {
+            warn!("Tried to save_most_recent_mouse_position, but there is no Window")
+        }
     }
 }
 
@@ -141,19 +198,20 @@ fn capture_clicks(
     mut mouse_button_input_events: EventReader<MouseButtonInput>,
     most_recent_mouse_position: Res<MostRecentMousePosition>,
     mut commands: Commands,
-    mut player_turn: ResMut<Mark>,
-    mut state: ResMut<State>,
+    mut info: ResMut<StateInfo>,
     asset_server: Res<AssetServer>,
     cells: Query<Entity, With<Cell>>,
-    query: Query<&Cell>
+    query: Query<&Cell>,
+    current_game_state: Res<State<GameState>>,
+    mut next_game_state: ResMut<NextState<GameState>>
 ) {
-    if state.winner.is_none() {
+    if info.winner.is_none() {
         let font = asset_server.load("fonts/larabie.otf");
 
         for event in mouse_button_input_events.read() {
             if event.button == MouseButton::Left && event.state == ButtonState::Pressed {
                 if let Some(cell) = Grid::hit_square(most_recent_mouse_position.pos) {
-                    match state.marks.entry(cell) {
+                    match info.marks.entry(cell) {
                         Entry::Occupied(_) => {
                             warn!("this cell is already occupied")
                         }
@@ -165,25 +223,37 @@ fn capture_clicks(
 
                             let entity = entities.get(0).unwrap();
                             let cell = query.get(*entity).unwrap().clone();
+                            let mark = info.current_player.unwrap();
 
                             commands.entity(*entity).with_children(|parent| {
                                 parent.spawn(TextBundle::from_section(
-                                    if *player_turn == Mark::X { "X" } else { "O" },
+                                    mark.to_string(),
                                     TextStyle {
                                         font_size: 200.0,
                                         font: font.clone(),
-                                        color: if *player_turn == Mark::X { Color::RED } else { Color::BLUE },
+                                        color: mark.color(),
                                         ..default()
                                     }
                                 ));
                             });
 
-                            state.marks.insert(cell, Some(*player_turn));
-                            *player_turn = player_turn.next();
+                            info.marks.insert(cell, Some(mark));
                             info!("Hit the {:?} cell", cell);
+                            info.winner = info.determine_winner();
 
-                            state.winner = state.determine_winner();
-                            info!("The winner is {:?}", state.winner);
+                            match info.winner {
+                                None => {
+                                    match *current_game_state.get() {
+                                        GameState::XTurn => next_game_state.set(GameState::OTurn),
+                                        GameState::OTurn => next_game_state.set(GameState::XTurn),
+                                        GameState::GameOver => unreachable!("entered capture_clicks() in GameOver state")
+                                    }
+                                }
+                                Some((mark, (from, to))) => {
+                                    info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
+                                    next_game_state.set(GameState::GameOver)
+                                }
+                            }
                         }
                     }
                 }

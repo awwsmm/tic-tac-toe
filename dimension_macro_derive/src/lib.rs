@@ -9,11 +9,7 @@ const HALFSIZE: f32 = GRID_SPACING / 2.0;
 
 #[proc_macro_derive(Dimension)]
 pub fn dimension_macro_derive(input: TokenStream) -> TokenStream {
-    // Construct a representation of Rust code as a syntax tree
-    // that we can manipulate
     let ast = syn::parse(input).unwrap();
-
-    // Build the trait implementation
     impl_dimension_macro(&ast)
 }
 
@@ -76,12 +72,9 @@ fn impl_dimension_macro(ast: &syn::DeriveInput) -> TokenStream {
                     };
 
                     gen.into()
-
                 }
                 _ => return derive_error!("Dimension requires an enum with exactly three variants")
             }
-
-
         }
         _ => return derive_error!("Dimension is only implemented for enums")
     }

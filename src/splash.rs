@@ -4,9 +4,9 @@ use crate::*;
 
 pub fn plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::Splash), setup)
-        .add_systems(Update, start.run_if(in_state(GameState::Splash)))
-        .add_systems(OnExit(GameState::Splash), clear_entities::<GameState>);
+        .add_systems(OnEnter(AppState::Splash), setup)
+        .add_systems(Update, start.run_if(in_state(AppState::Splash)))
+        .add_systems(OnExit(AppState::Splash), clear_entities::<AppState>);
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -59,7 +59,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
     }
 
-    draw_screen(&mut commands, GameState::Splash).with_children(|parent| {
+    draw_screen(&mut commands, AppState::Splash).with_children(|parent| {
         parent
             .spawn(NodeBundle {
                 style: Style {
@@ -85,7 +85,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
                         ..default()
                     },
-                    GameState::Splash
+                    AppState::Splash
                 )).with_children(|parent| {
                     parent.spawn(
                         TextBundle::from_section(
@@ -105,12 +105,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn start(
     mut query: Query<&Interaction, (Changed<Interaction>, With<Button>)>,
-    mut game_state: ResMut<NextState<GameState>>,
+    mut game_state: ResMut<NextState<AppState>>,
 ) {
     for interaction in &mut query {
         match interaction {
             Interaction::Pressed => {
-                game_state.set(GameState::Game)
+                game_state.set(AppState::Game)
             },
             Interaction::Hovered => {},
             Interaction::None => {},

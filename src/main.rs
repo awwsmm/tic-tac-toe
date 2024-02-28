@@ -56,7 +56,7 @@ impl Default for MostRecentMousePosition {
 }
 
 #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States, Component)]
-enum GameState {
+enum AppState {
     #[default]
     Splash,
     Game,
@@ -67,7 +67,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .insert_resource(MostRecentMousePosition::default())
-        .init_state::<GameState>() // start in GameState::default()
+        .init_state::<AppState>() // start in GameState::default()
         .add_systems(Startup, setup)
         .add_plugins((splash::plugin, game::plugin))
         .run();
@@ -83,7 +83,7 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
 }
 
-fn draw_screen<'a>(commands: &'a mut Commands, state: GameState) -> EntityCommands<'a> {
+fn draw_screen<'a>(commands: &'a mut Commands, state: AppState) -> EntityCommands<'a> {
     commands
         .spawn((
             NodeBundle {
