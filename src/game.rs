@@ -296,7 +296,7 @@ fn game_over(
                     });
                 }
 
-                button(parent, "play again", Color::GREEN, GameOverButton::PlayAgain, font.clone());
+                button(parent, "play again", Color::BLUE, GameOverButton::PlayAgain, font.clone());
                 button(parent, "back to menu", Color::RED, GameOverButton::BackToMenu, font.clone());
             });
         });

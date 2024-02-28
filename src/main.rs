@@ -1,3 +1,4 @@
+use bevy::asset::AssetMetaCheck;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use dimension_macro_derive::Dimension;
@@ -64,6 +65,7 @@ enum AppState {
 
 fn main() {
     App::new()
+        .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .insert_resource(MostRecentMousePosition::default())
