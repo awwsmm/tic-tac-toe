@@ -226,37 +226,30 @@ fn game_over(
                 border_color: when_debugging(Color::GREEN.into()),
                 ..default()
             }).with_children(|parent| {
+                fn spawn_text(
+                    parent: &mut ChildBuilder,
+                    text: impl Into<String>,
+                    font: Handle<Font>,
+                    text_color: Color
+                ) {
+                    parent.spawn(TextBundle::from_section(
+                        text,
+                        TextStyle {
+                            color: text_color,
+                            font_size: 75.0,
+                            font: font.clone(),
+                            ..default()
+                        }
+                    ));
+                }
+
                 match info.winner {
                     None => {
-                        parent.spawn(TextBundle::from_section(
-                            "It's a tie!",
-                            TextStyle {
-                                color: Color::BLACK,
-                                font_size: 75.0,
-                                font: font.clone(),
-                                ..default()
-                            }
-                        ));
+                        spawn_text(parent, "It's a tie!", font.clone(), Color::BLACK);
                     }
                     Some((winner, _)) => {
-                        parent.spawn(TextBundle::from_section(
-                            format!("{}", winner.to_string()),
-                            TextStyle {
-                                color: info.winner.unwrap().0.color(),
-                                font_size: 75.0,
-                                font: font.clone(),
-                                ..default()
-                            }
-                        ));
-                        parent.spawn(TextBundle::from_section(
-                            " wins!",
-                            TextStyle {
-                                color: Color::BLACK,
-                                font_size: 75.0,
-                                font: font.clone(),
-                                ..default()
-                            }
-                        ));
+                        spawn_text(parent, format!("{}", winner.to_string()), font.clone(), winner.color());
+                        spawn_text(parent, " wins!", font.clone(), Color::BLACK);
                     }
                 }
             });
