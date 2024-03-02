@@ -55,7 +55,7 @@ fn main() {
         .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
-        .init_state::<AppState>() // start in GameState::default()
+        .init_state::<AppState>()
         .add_systems(Startup, setup)
         .add_plugins((splash::plugin, game::plugin))
         .run();

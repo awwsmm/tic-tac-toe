@@ -85,11 +85,9 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(AppState::Game), start_game)
         .init_state::<GameState>()
         .add_systems(OnEnter(GameState::XTurn), start_x_turn)
-        .add_systems(Update, capture_clicks.run_if(in_state(GameState::XTurn)))
-        .add_systems(Update, capture_touches.run_if(in_state(GameState::XTurn)))
+        .add_systems(Update, capture_input.run_if(in_state(GameState::XTurn)))
         .add_systems(OnEnter(GameState::OTurn), start_o_turn)
-        .add_systems(Update, capture_clicks.run_if(in_state(GameState::OTurn)))
-        .add_systems(Update, capture_touches.run_if(in_state(GameState::OTurn)))
+        .add_systems(Update, capture_input.run_if(in_state(GameState::OTurn)))
         .add_systems(OnEnter(GameState::GameOver), game_over)
         .add_systems(Update, game_over_buttons.run_if(in_state(GameState::GameOver)))
         .add_systems(OnExit(GameState::GameOver), clear_entities::<Mark>)
@@ -315,158 +313,99 @@ fn game_over_buttons(
             }
         }
     }
-
 }
 
-fn process_input(
-    info: &mut ResMut<StateInfo>,
-    cell: Cell,
-    cells: &Query<Entity, With<Cell>>,
-    query: &Query<&Cell>,
-    commands: &mut Commands,
-    font: Handle<Font>,
-    current_game_state: &Res<State<GameState>>,
-    next_game_state: &mut ResMut<NextState<GameState>>,
+fn capture_input(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    mut info: ResMut<StateInfo>,
+    cells: Query<(Entity, &Cell)>,
+    touch_input: Res<Touches>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    current_game_state: Res<State<GameState>>,
+    mut next_game_state: ResMut<NextState<GameState>>,
 ) {
+    // if the winner has already been decided, we should ignore user input until a new game is started
+    if info.winner.is_some() { return; }
+
+    // expect() because we spawn only a single Camera2dBundle and expect Bevy to be able to provide it to us
+    let (camera, camera_transform) = cameras.get_single().expect("expected exactly one camera");
+
+    // get touch input from users on mobile
+    let maybe_touch_coordinates: Option<Vec2> =
+        touch_input.iter()
+            .filter(|finger| touch_input.just_pressed(finger.id()))
+            .next()
+            .map(|finger| finger.position());
+
+    // get mouse input from users on desktop
+    let maybe_click_coordinates: Option<Vec2> =
+        windows.get_single().iter()
+            .filter(|_| mouse_button_input.just_pressed(MouseButton::Left))
+            .next()
+            .and_then(|window| window.cursor_position());
+
+    // if the user did not click on a cell, do nothing
+    let Some(cell) = maybe_touch_coordinates.or(maybe_click_coordinates)
+        .and_then(|window_coordinates| camera.viewport_to_world_2d(camera_transform, window_coordinates))
+        .and_then(|world_coordinates| Grid::hit_square(world_coordinates)) else { return; };
+
+    // but if the user did click on a cell...
     match info.marks.entry(cell) {
         Entry::Occupied(_) => {
             warn!("this cell is already occupied")
         }
         Entry::Vacant(_) => {
-            let entities = cells.iter().filter(|e| query.get(*e).unwrap() == &cell).collect::<Vec<Entity>>();
 
-            match entities.get(0) {
+            // ...get a handle to the cell clicked
+            let (entity, cell) = cells.iter().filter(|(_, c)| c == &&cell).next().expect("could not find clicked cell in all cells");
+
+            // ...and mark the cell as clicked by that player
+            let mark = info.current_player.expect("current player is unset");
+            info.marks.insert(cell.clone(), Some(mark));
+            info!("Hit the {:?} cell", cell);
+
+            // draw the mark on the board
+            commands.entity(entity).with_children(|parent| {
+                parent.spawn((
+                    TextBundle::from_section(
+                        mark.to_string(),
+                        TextStyle {
+                            font_size: 200.0,
+                            font: asset_server.load("fonts/larabie.otf"),
+                            color: mark.color(),
+                            ..default()
+                        }
+                    ),
+                    mark // tag the entity with the Mark Component
+                ));
+            });
+
+            // determine whether or not there is a winner
+            info.winner = info.determine_winner();
+
+            match info.winner {
+                // if there is no winner...
                 None => {
-                    info!("pressed back to menu -- error here")
-                }
-                Some(entity) => {
-                    let cell = query.get(*entity).unwrap().clone();
-                    let mark = info.current_player.unwrap();
-
-                    commands.entity(*entity).with_children(|parent| {
-                        parent.spawn((
-                            TextBundle::from_section(
-                                mark.to_string(),
-                                TextStyle {
-                                    font_size: 200.0,
-                                    font: font.clone(),
-                                    color: mark.color(),
-                                    ..default()
-                                }
-                            ),
-                            mark
-                        ));
-                    });
-
-                    info.marks.insert(cell, Some(mark));
-                    info!("Hit the {:?} cell", cell);
-                    info.winner = info.determine_winner();
-
-                    match info.winner {
-                        None => {
-                            if info.marks.len() < 9 {
-                                match *current_game_state.get() {
-                                    GameState::XTurn => next_game_state.set(GameState::OTurn),
-                                    GameState::OTurn => next_game_state.set(GameState::XTurn),
-                                    GameState::GameOver => unreachable!("called capture_clicks() in GameOver state"),
-                                    GameState::GameNotInProgress => unreachable!("called capture_clicks() in GameNotInProgress state"),
-                                }
-                            } else {
-                                info!("The game ends in a tie");
-                                next_game_state.set(GameState::GameOver)
-                            }
+                    // ...keep playing
+                    if info.marks.len() < 9 {
+                        match *current_game_state.get() {
+                            GameState::XTurn => next_game_state.set(GameState::OTurn),
+                            GameState::OTurn => next_game_state.set(GameState::XTurn),
+                            GameState::GameOver => unreachable!("called capture_input() in GameOver state"),
+                            GameState::GameNotInProgress => unreachable!("called capture_input() in GameNotInProgress state"),
                         }
-                        Some((mark, (from, to))) => {
-                            info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
-                            next_game_state.set(GameState::GameOver)
-                        }
+                        // ...unless there are now 9 marks on the board, in which case the game ends in a tie
+                    } else {
+                        info!("The game ends in a tie");
+                        next_game_state.set(GameState::GameOver)
                     }
                 }
-            }
-        }
-    }
-}
-
-fn capture_touches(
-    touches: Res<Touches>,
-    mut commands: Commands,
-    mut info: ResMut<StateInfo>,
-    asset_server: Res<AssetServer>,
-    cells: Query<Entity, With<Cell>>,
-    query: Query<&Cell>,
-    current_game_state: Res<State<GameState>>,
-    mut next_game_state: ResMut<NextState<GameState>>,
-    camera_query: Query<(&Camera, &GlobalTransform)>
-) {
-    if info.winner.is_none() {
-        let font = asset_server.load("fonts/larabie.otf");
-        for finger in touches.iter() {
-            if touches.just_pressed(finger.id()) {
-                match camera_query.get_single() {
-                    Ok((camera, camera_transform)) => {
-
-                        let touch_position = finger.position();
-                        let world_coordinates = camera.viewport_to_world_2d(camera_transform, touch_position).expect("could not get world coords");
-
-                        if let Some(cell) = Grid::hit_square(world_coordinates) {
-                            process_input(
-                                &mut info,
-                                cell,
-                                &cells,
-                                &query,
-                                &mut commands,
-                                font.clone(),
-                                &current_game_state,
-                                &mut next_game_state,
-                            )
-                        }
-                    }
-                    _ => {
-                        warn!("capture_touches was unable to query the camera");
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn capture_clicks(
-    mouse_button_input_events: Res<ButtonInput<MouseButton>>,
-    mut commands: Commands,
-    mut info: ResMut<StateInfo>,
-    asset_server: Res<AssetServer>,
-    cells: Query<Entity, With<Cell>>,
-    query: Query<&Cell>,
-    current_game_state: Res<State<GameState>>,
-    mut next_game_state: ResMut<NextState<GameState>>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
-    windows: Query<&Window>
-) {
-    if info.winner.is_none() {
-        let font = asset_server.load("fonts/larabie.otf");
-
-        if mouse_button_input_events.just_pressed(MouseButton::Left) {
-            match (windows.get_single(), camera_query.get_single()) {
-                (Ok(window), Ok((camera, camera_transform))) => {
-
-                    let cursor_position = window.cursor_position().expect("could not get cursor position");
-                    let world_coordinates = camera.viewport_to_world_2d(camera_transform, cursor_position).expect("could not get world coords");
-
-                    if let Some(cell) = Grid::hit_square(world_coordinates) {
-                        process_input(
-                            &mut info,
-                            cell,
-                            &cells,
-                            &query,
-                            &mut commands,
-                            font.clone(),
-                            &current_game_state,
-                            &mut next_game_state,
-                        )
-                    }
-                }
-                _ => {
-                    warn!("capture_clicks was unable to query the window or the camera");
+                Some((mark, (from, to))) => {
+                    info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
+                    next_game_state.set(GameState::GameOver)
                 }
             }
         }
