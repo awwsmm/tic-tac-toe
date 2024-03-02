@@ -43,19 +43,6 @@ impl Grid {
     }
 }
 
-#[derive(Resource, Debug)]
-struct MostRecentMousePosition {
-    pos: Vec2
-}
-
-impl Default for MostRecentMousePosition {
-    fn default() -> Self {
-        Self {
-            pos: Vec2::splat(f32::NAN)
-        }
-    }
-}
-
 #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States, Component)]
 enum AppState {
     #[default]
@@ -68,7 +55,6 @@ fn main() {
         .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
-        .insert_resource(MostRecentMousePosition::default())
         .init_state::<AppState>() // start in GameState::default()
         .add_systems(Startup, setup)
         .add_plugins((splash::plugin, game::plugin))
