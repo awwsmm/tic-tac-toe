@@ -1,7 +1,10 @@
+use std::fmt::Formatter;
+
 use bevy::asset::AssetMetaCheck;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use dimension_macro_derive::Dimension;
+use rand::prelude::*;
 
 mod splash;
 mod game;
@@ -13,11 +16,25 @@ enum Row {
     Top,
 }
 
+impl Row {
+    fn random() -> Self {
+        let mut rng = thread_rng();
+        Self::values().iter().choose(&mut rng).unwrap().clone()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
 enum Column {
     Left,
     Middle,
     Right
+}
+
+impl Column {
+    fn random() -> Self {
+        let mut rng = thread_rng();
+        Self::values().iter().choose(&mut rng).unwrap().clone()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Component)]
@@ -50,9 +67,44 @@ enum AppState {
     Game,
 }
 
+// X is always the first player
+#[derive(Resource, Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
+enum Mark {
+    #[default]
+    X,
+    O
+}
+
+impl std::fmt::Display for Mark {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mark::X => write!(f, "X"),
+            Mark::O => write!(f, "O"),
+        }
+    }
+}
+
+impl Mark {
+    fn color(&self) -> Color {
+        match self {
+            Mark::X => Color::RED,
+            Mark::O => Color::BLUE,
+        }
+    }
+}
+
+#[derive(Resource, Component, Clone, Copy)]
+enum GameMode {
+    OnePlayer {
+        human_mark: Mark // human goes first by default
+    },
+    TwoPlayers,
+}
+
 fn main() {
     App::new()
         .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112
+        .insert_resource(GameMode::TwoPlayers)
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .init_state::<AppState>()

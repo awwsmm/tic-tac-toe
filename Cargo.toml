@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 bevy = "0.13.0"
 dimension_macro_derive = { path = "dimension_macro_derive" }
+rand = "0.8.5"

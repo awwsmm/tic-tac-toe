@@ -74,42 +74,50 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 word(parent, ['T', 'A', 'C'], font.clone());
                 word(parent, ['T', 'O', 'E'], font.clone());
 
-                parent.spawn((
-                    ButtonBundle {
-                        style: Style {
-                            margin: UiRect::top(Val::Px(100.0)),
-                            border: when_debugging(UiRect::all(Val::Px(1.0))),
-                            ..default()
-                        },
-                        border_color: when_debugging(Color::INDIGO.into()),
-                        background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
-                        ..default()
-                    },
-                    AppState::Splash
-                )).with_children(|parent| {
-                    parent.spawn(
-                        TextBundle::from_section(
-                            "START",
-                            TextStyle {
-                                font,
-                                font_size: 60.0,
-                                color: Color::BLACK,
+                fn start_with(text: impl Into<String>, game_mode: GameMode, parent: &mut ChildBuilder, font: Handle<Font>) {
+                    parent.spawn((
+                        ButtonBundle {
+                            style: Style {
+                                margin: UiRect::top(Val::Px(100.0)),
+                                border: when_debugging(UiRect::all(Val::Px(1.0))),
                                 ..default()
                             },
-                        )
-                    );
-                });
+                            border_color: when_debugging(Color::INDIGO.into()),
+                            background_color: Color::rgba(0.0, 0.0, 0.0, 0.0).into(),
+                            ..default()
+                        },
+                        AppState::Splash,
+                        game_mode
+                    )).with_children(|parent| {
+                        parent.spawn(
+                            TextBundle::from_section(
+                                text,
+                                TextStyle {
+                                    font,
+                                    font_size: 60.0,
+                                    color: Color::BLACK,
+                                    ..default()
+                                },
+                            )
+                        );
+                    });
+                }
+
+                start_with("One Player", GameMode::OnePlayer { human_mark: Default::default() }, parent, font.clone());
+                start_with("Two Players", GameMode::TwoPlayers, parent, font.clone());
             });
     });
 }
 
 fn start(
-    mut query: Query<&Interaction, (Changed<Interaction>, With<Button>)>,
+    mut query: Query<(&Interaction, &GameMode), (Changed<Interaction>, With<Button>)>,
     mut app_state: ResMut<NextState<AppState>>,
+    mut game_mode: ResMut<GameMode>,
 ) {
-    for interaction in &mut query {
+    for (interaction, mode) in &mut query {
         match interaction {
             Interaction::Pressed => {
+                *game_mode = mode.clone();
                 app_state.set(AppState::Game)
             },
             Interaction::Hovered => {},

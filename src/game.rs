@@ -1,35 +1,8 @@
-use std::fmt::Formatter;
-
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy::utils::hashbrown::hash_map::Entry;
 
 use crate::*;
-
-#[derive(Resource, Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
-enum Mark {
-    #[default]
-    X,
-    O
-}
-
-impl std::fmt::Display for Mark {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Mark::X => write!(f, "X"),
-            Mark::O => write!(f, "O"),
-        }
-    }
-}
-
-impl Mark {
-    fn color(&self) -> Color {
-        match self {
-            Mark::X => Color::RED,
-            Mark::O => Color::BLUE,
-        }
-    }
-}
 
 #[derive(States, Clone, Hash, PartialEq, Eq, Debug, Default)]
 enum GameState {
@@ -44,7 +17,7 @@ enum GameState {
 struct StateInfo {
     marks: HashMap<Cell, Option<Mark>>,
     winner: Option<(Mark, (Cell, Cell))>,
-    current_player: Option<Mark>
+    current_player: Mark,
 }
 
 impl StateInfo {
@@ -97,11 +70,11 @@ pub fn plugin(app: &mut App) {
 }
 
 fn start_x_turn(mut info: ResMut<StateInfo>) {
-    info.current_player = Some(Mark::X)
+    info.current_player = Mark::X
 }
 
 fn start_o_turn(mut info: ResMut<StateInfo>) {
-    info.current_player = Some(Mark::O)
+    info.current_player = Mark::O
 }
 
 fn start_game(
@@ -308,20 +281,12 @@ fn game_over_buttons(
     }
 }
 
-fn capture_input(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
+fn capture_user_input(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
-    mut info: ResMut<StateInfo>,
-    cells: Query<(Entity, &Cell)>,
     touch_input: Res<Touches>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
-    current_game_state: Res<State<GameState>>,
-    mut next_game_state: ResMut<NextState<GameState>>,
-) {
-    // if the winner has already been decided, we should ignore user input until a new game is started
-    if info.winner.is_some() { return; }
+) -> Option<Cell> {
 
     // expect() because we spawn only a single Camera2dBundle and expect Bevy to be able to provide it to us
     let (camera, camera_transform) = cameras.get_single().expect("expected exactly one camera");
@@ -340,12 +305,46 @@ fn capture_input(
             .next()
             .and_then(|window| window.cursor_position());
 
-    // if the user did not click on a cell, do nothing
-    let Some(cell) = maybe_touch_coordinates.or(maybe_click_coordinates)
+    maybe_touch_coordinates.or(maybe_click_coordinates)
         .and_then(|window_coordinates| camera.viewport_to_world_2d(camera_transform, window_coordinates))
-        .and_then(|world_coordinates| Grid::hit_square(world_coordinates)) else { return; };
+        .and_then(|world_coordinates| Grid::hit_square(world_coordinates))
+}
 
-    // but if the user did click on a cell...
+fn generate_computer_input() -> Cell {
+    // TODO implement minimax algorithm for computer player
+    //      https://www.neverstopbuilding.com/blog/minimax
+    Cell::new(Row::random(), Column::random())
+}
+
+fn capture_input(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    mut info: ResMut<StateInfo>,
+    cells: Query<(Entity, &Cell)>,
+    touch_input: Res<Touches>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    current_game_state: Res<State<GameState>>,
+    mut next_game_state: ResMut<NextState<GameState>>,
+    game_mode: Res<GameMode>,
+) {
+
+    // if the winner has already been decided, we should ignore user input until a new game is started
+    if info.winner.is_some() { return; }
+
+    // either "X" or "O"
+    let mark = info.current_player;
+
+    let maybe_cell = match *game_mode {
+        GameMode::OnePlayer { human_mark } if human_mark != mark => Some(generate_computer_input()),
+        _ => capture_user_input(windows, cameras, touch_input, mouse_button_input)
+    };
+
+    // the computer will always select a cell, but the human might not
+    let Some(cell) = maybe_cell else { return; };
+
+    // If the user / the computer did click on a cell...
     match info.marks.entry(cell) {
         Entry::Occupied(_) => {
             warn!("this cell is already occupied")
@@ -356,7 +355,6 @@ fn capture_input(
             let (entity, cell) = cells.iter().filter(|(_, c)| c == &&cell).next().expect("could not find clicked cell in all cells");
 
             // ...and mark the cell as clicked by that player
-            let mark = info.current_player.expect("current player is unset");
             info.marks.insert(cell.clone(), Some(mark));
             info!("Hit the {:?} cell", cell);
 
