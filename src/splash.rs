@@ -78,7 +78,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     parent.spawn((
                         ButtonBundle {
                             style: Style {
-                                margin: UiRect::top(Val::Px(100.0)),
                                 border: when_debugging(UiRect::all(Val::Px(1.0))),
                                 ..default()
                             },
@@ -103,8 +102,24 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     });
                 }
 
-                start_with("One Player", GameMode::OnePlayer { human_mark: Default::default() }, parent, font.clone());
-                start_with("Two Players", GameMode::TwoPlayers, parent, font.clone());
+                parent
+                    .spawn(NodeBundle {
+                        style: Style {
+                            height: Val::Px(200.0),
+                            margin: UiRect::top(Val::Px(50.0)),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::SpaceEvenly,
+                            border: when_debugging(UiRect::all(Val::Px(1.0))),
+                            ..default()
+                        },
+                        border_color: when_debugging(Color::FUCHSIA.into()),
+                        ..default()
+                    })
+                    .with_children(|parent| {
+                        start_with("One Player", GameMode::OnePlayer { human_mark: Default::default() }, parent, font.clone());
+                        start_with("Two Players", GameMode::TwoPlayers, parent, font.clone());
+                    });
             });
     });
 }
