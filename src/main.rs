@@ -44,7 +44,7 @@ struct Cell {
 }
 
 impl Cell {
-    fn new(row: Row, column: Column) -> Self {
+    const fn new(row: Row, column: Column) -> Self {
         Self { row, column }
     }
 }

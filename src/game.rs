@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
-use bevy::utils::hashbrown::hash_map::Entry;
 
 use crate::*;
 
@@ -13,16 +11,23 @@ enum GameState {
     GameOver
 }
 
-#[derive(Resource, Default)]
-struct StateInfo {
-    marks: HashMap<Cell, Option<Mark>>,
-    winner: Option<(Mark, (Cell, Cell))>,
-    current_player: Mark,
-}
+// Game is inside game module so private fields of Game cannot be accessed / mutated directly
+mod game {
+    use bevy::utils::{HashMap, HashSet};
 
-impl StateInfo {
-    fn determine_winner(&self) -> Option<(Mark, (Cell, Cell))> {
-        let winning_arrangements: [(fn(&(&Cell, &Option<Mark>)) -> bool, (Cell, Cell)); 8] = [
+    use crate::{Cell, Column, Mark, Row};
+
+    // All of Game's fields are private so that we can recalculate the winner when a new mark is made on the board
+    // impl Default is required for impl Default on StateInfo
+    #[derive(Default)]
+    pub struct Game {
+        marks: HashMap<Cell, Option<Mark>>,
+        winner: Option<(Mark, (Cell, Cell))>,
+        over: bool
+    }
+
+    impl Game {
+        const WINNING_ARRANGEMENTS: [(fn(&(&Cell, &Option<Mark>)) -> bool, (Cell, Cell)); 8] = [
             (|(Cell { row, .. }, _)| *row == Row::Top, (Cell::new(Row::Top, Column::Left), Cell::new(Row::Top, Column::Right))),
             (|(Cell { row, .. }, _)| *row == Row::Middle, (Cell::new(Row::Middle, Column::Left), Cell::new(Row::Middle, Column::Right))),
             (|(Cell { row, .. }, _)| *row == Row::Bottom, (Cell::new(Row::Bottom, Column::Left), Cell::new(Row::Bottom, Column::Right))),
@@ -33,22 +38,52 @@ impl StateInfo {
             (|(Cell { row, column }, _)| column.position() == -row.position(), (Cell::new(Row::Top, Column::Left), Cell::new(Row::Bottom, Column::Right))),
         ];
 
-        for (arrangement, line) in winning_arrangements {
-            let marks = self.marks.iter()
-                .filter(arrangement)
-                .flat_map(|(_, mark)| *mark)
-                .collect::<Vec<Mark>>();
+        fn determine_winner(marks: &HashMap<Cell, Option<Mark>>) -> Option<(Mark, (Cell, Cell))> {
+            for (arrangement, line) in Self::WINNING_ARRANGEMENTS {
+                let marks = marks.iter()
+                    .filter(arrangement)
+                    .flat_map(|(_, mark)| *mark)
+                    .collect::<Vec<Mark>>();
 
-            let unique_marks = marks.iter().cloned()
-                .collect::<HashSet<Mark>>();
+                let unique_marks = marks.iter().cloned()
+                    .collect::<HashSet<Mark>>();
 
-            if marks.len() == 3 && unique_marks.len() == 1 {
-                return Some((marks.get(0).unwrap().clone(), line));
+                if marks.len() == 3 && unique_marks.len() == 1 {
+                    return Some((marks.get(0).unwrap().clone(), line))
+                };
             }
+
+            None
         }
 
-        None
+        // behind a getter so the user cannot mutate this field directly
+        pub fn winner(&self) -> Option<(Mark, (Cell, Cell))> {
+            self.winner
+        }
+
+        // behind a getter so the user cannot mutate this field directly
+        pub fn over(&self) -> bool {
+            self.over
+        }
+
+        // behind a getter so the user cannot access / mutate marks directly
+        pub fn get(&self, cell: Cell) -> Option<Mark> {
+            self.marks.get(&cell).cloned().flatten()
+        }
+
+        // behind a setter so we can recalculate the winner immediately
+        pub fn set(&mut self, cell: Cell, mark: Mark) {
+            self.marks.insert(cell, Some(mark));
+            self.winner = Game::determine_winner(&self.marks);
+            self.over = self.winner.is_some();
+        }
     }
+}
+
+#[derive(Resource, Default)]
+struct StateInfo {
+    game: game::Game,
+    current_player: Mark,
 }
 
 pub fn plugin(app: &mut App) {
@@ -216,7 +251,7 @@ fn game_over(
                     ));
                 }
 
-                match info.winner {
+                match info.game.winner() {
                     None => {
                         spawn_text(parent, "It's a tie!", font.clone(), Color::BLACK);
                     }
@@ -331,7 +366,7 @@ fn capture_input(
 ) {
 
     // if the winner has already been decided, we should ignore user input until a new game is started
-    if info.winner.is_some() { return; }
+    if info.game.over() { return; }
 
     // either "X" or "O"
     let mark = info.current_player;
@@ -345,17 +380,14 @@ fn capture_input(
     let Some(cell) = maybe_cell else { return; };
 
     // If the user / the computer did click on a cell...
-    match info.marks.entry(cell) {
-        Entry::Occupied(_) => {
-            warn!("this cell is already occupied")
-        }
-        Entry::Vacant(_) => {
-
+    match info.game.get(cell) {
+        Some(_) => warn!("this cell is already occupied"),
+        None => {
             // ...get a handle to the cell clicked
             let (entity, cell) = cells.iter().filter(|(_, c)| c == &&cell).next().expect("could not find clicked cell in all cells");
 
             // ...and mark the cell as clicked by that player
-            info.marks.insert(cell.clone(), Some(mark));
+            info.game.set(cell.clone(), mark);
             info!("Hit the {:?} cell", cell);
 
             // draw the mark on the board
@@ -374,29 +406,26 @@ fn capture_input(
                 ));
             });
 
-            // determine whether or not there is a winner
-            info.winner = info.determine_winner();
-
-            match info.winner {
-                // if there is no winner...
-                None => {
-                    // ...keep playing
-                    if info.marks.len() < 9 {
-                        match *current_game_state.get() {
-                            GameState::XTurn => next_game_state.set(GameState::OTurn),
-                            GameState::OTurn => next_game_state.set(GameState::XTurn),
-                            GameState::GameOver => unreachable!("called capture_input() in GameOver state"),
-                            GameState::GameNotInProgress => unreachable!("called capture_input() in GameNotInProgress state"),
-                        }
-                        // ...unless there are now 9 marks on the board, in which case the game ends in a tie
-                    } else {
+            // If the game is over...
+            if info.game.over() {
+                match info.game.winner() {
+                    None => {
                         info!("The game ends in a tie");
-                        next_game_state.set(GameState::GameOver)
+                    }
+                    Some((mark, (from, to))) => {
+                        info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
                     }
                 }
-                Some((mark, (from, to))) => {
-                    info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
-                    next_game_state.set(GameState::GameOver)
+
+                next_game_state.set(GameState::GameOver)
+
+            } else {
+                // If the game is not over... keep playing
+                match *current_game_state.get() {
+                    GameState::XTurn => next_game_state.set(GameState::OTurn),
+                    GameState::OTurn => next_game_state.set(GameState::XTurn),
+                    GameState::GameOver => unreachable!("called capture_input() in GameOver state"),
+                    GameState::GameNotInProgress => unreachable!("called capture_input() in GameNotInProgress state"),
                 }
             }
         }
