@@ -16,25 +16,11 @@ enum Row {
     Top,
 }
 
-impl Row {
-    fn random() -> Self {
-        let mut rng = thread_rng();
-        Self::values().iter().choose(&mut rng).unwrap().clone()
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
 enum Column {
     Left,
     Middle,
     Right
-}
-
-impl Column {
-    fn random() -> Self {
-        let mut rng = thread_rng();
-        Self::values().iter().choose(&mut rng).unwrap().clone()
-    }
 }
 
 #[derive(Clone, Copy)]

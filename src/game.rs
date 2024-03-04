@@ -387,7 +387,6 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
             Cell::BOTTOM_LEFT => 6,
             Cell::BOTTOM_MIDDLE => 7,
             Cell::BOTTOM_RIGHT => 8,
-            _ => unreachable!("all cells should be covered in match statement above")
         }
     }
 
