@@ -345,10 +345,97 @@ fn capture_user_input(
         .and_then(|world_coordinates| Grid::hit_square(world_coordinates))
 }
 
-fn generate_computer_input() -> Cell {
-    // TODO implement minimax algorithm for computer player
-    //      https://www.neverstopbuilding.com/blog/minimax
-    Cell::new(Row::random(), Column::random())
+enum Difficulty {
+    Easy,
+    Medium,
+    Hard,
+}
+
+fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Difficulty) -> Cell {
+
+    // weight cells based on their advantage to the computer and their disadvantage to the human
+    //
+    //   1. +20 for any cell which lets the computer win this turn
+    //   2. +10 for any cell which blocks a human win this turn
+    //   3. +2 for the middle-middle space
+    //   4. +1 for any corner space
+    //
+    // ...then, just pick the cell with the highest weight, after filtering out already-occupied cells
+
+    let mut weights: [i8;9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    // scale weights based on difficulty, so the computer picks non-optimal moves
+
+    let scale = match difficulty {
+        Difficulty::Easy => -1, // purposefully pick the worst possible moves
+        Difficulty::Medium => {
+            // randomly pick best-possible and worst-possible moves
+            let mut rng = thread_rng();
+            [-1, 1].choose(&mut rng).expect("array is non-empty, so we should always get a value").clone()
+        },
+        Difficulty::Hard => 1, // pick the best possible moves
+    };
+
+    fn index(cell: Cell) -> usize {
+        match cell {
+            Cell::TOP_LEFT => 0,
+            Cell::TOP_MIDDLE => 1,
+            Cell::TOP_RIGHT => 2,
+            Cell::MIDDLE_LEFT => 3,
+            Cell::MIDDLE_MIDDLE => 4,
+            Cell::MIDDLE_RIGHT => 5,
+            Cell::BOTTOM_LEFT => 6,
+            Cell::BOTTOM_MIDDLE => 7,
+            Cell::BOTTOM_RIGHT => 8,
+            _ => unreachable!("all cells should be covered in match statement above")
+        }
+    }
+
+    Line::all().map(|line| {
+        let cells: [Cell;3] = line.into();
+        let cells_and_marks = cells.map(|cell| (cell, game.get(cell)));
+
+        // case (1)
+        match cells_and_marks {
+            [(_, Some(a)), (_, Some(b)), (cell, None)] if a == b && b == computer => weights[index(cell)] += 20 * scale,
+            [(_, Some(a)), (cell, None), (_, Some(b))] if a == b && b == computer => weights[index(cell)] += 20 * scale,
+            [(cell, None), (_, Some(a)), (_, Some(b))] if a == b && b == computer => weights[index(cell)] += 20 * scale,
+            _ => {}
+        }
+
+        // case (2)
+        match cells_and_marks {
+            [(_, Some(a)), (_, Some(b)), (cell, None)] if a == b && b != computer => weights[index(cell)] += 10 * scale,
+            [(_, Some(a)), (cell, None), (_, Some(b))] if a == b && b != computer => weights[index(cell)] += 10 * scale,
+            [(cell, None), (_, Some(a)), (_, Some(b))] if a == b && b != computer => weights[index(cell)] += 10 * scale,
+            _ => {}
+        }
+
+        // case (3)
+        match cells_and_marks {
+            [_, (cell, None), _] if cell == Cell::MIDDLE_MIDDLE => weights[index(cell)] += 2 * scale,
+            _ => {}
+        }
+
+        // case (4)
+        match cells_and_marks {
+            [(cell, None), _, _] if cell.is_corner() => weights[index(cell)] += 1 * scale,
+            [_, _, (cell, None)] if cell.is_corner() => weights[index(cell)] += 1 * scale,
+            _ => {}
+        }
+    });
+
+    debug!("cell weights (higher is better): {:?}", weights);
+
+    let (index, _) = weights.iter().enumerate()
+        .filter(|(index, _)| game.get(Cell::all()[*index]).is_none())
+        .max_by(|(_, &w1), (_, w2)| w1.cmp(w2)).expect("unable to find max weight");
+
+    let chosen_cell = Cell::all()[index];
+
+    debug!("optimal cell for computer to choose is {:?}", chosen_cell);
+
+    chosen_cell
 }
 
 fn capture_input(
@@ -372,7 +459,7 @@ fn capture_input(
     let mark = info.current_player;
 
     let maybe_cell = match *game_mode {
-        GameMode::OnePlayer { human_mark } if human_mark != mark => Some(generate_computer_input()),
+        GameMode::OnePlayer { human_mark } if human_mark != mark => Some(generate_computer_input(&info.game, mark, Difficulty::Easy)),
         _ => capture_user_input(windows, cameras, touch_input, mouse_button_input)
     };
 
@@ -388,7 +475,7 @@ fn capture_input(
 
             // ...and mark the cell as clicked by that player
             info.game.set(cell.clone(), mark);
-            info!("Hit the {:?} cell", cell);
+            info!("{:?} was hit", cell);
 
             // draw the mark on the board
             commands.entity(entity).with_children(|parent| {
