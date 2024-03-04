@@ -15,30 +15,30 @@ enum GameState {
 mod game {
     use bevy::utils::{HashMap, HashSet};
 
-    use crate::{Cell, Column, Mark, Row};
+    use crate::{Cell, Column, Line, Mark, Row};
 
     // All of Game's fields are private so that we can recalculate the winner when a new mark is made on the board
     // impl Default is required for impl Default on StateInfo
     #[derive(Default)]
     pub struct Game {
         marks: HashMap<Cell, Option<Mark>>,
-        winner: Option<(Mark, (Cell, Cell))>,
+        winner: Option<(Mark, Line)>,
         over: bool
     }
 
     impl Game {
-        const WINNING_ARRANGEMENTS: [(fn(&(&Cell, &Option<Mark>)) -> bool, (Cell, Cell)); 8] = [
-            (|(Cell { row, .. }, _)| *row == Row::Top, (Cell::new(Row::Top, Column::Left), Cell::new(Row::Top, Column::Right))),
-            (|(Cell { row, .. }, _)| *row == Row::Middle, (Cell::new(Row::Middle, Column::Left), Cell::new(Row::Middle, Column::Right))),
-            (|(Cell { row, .. }, _)| *row == Row::Bottom, (Cell::new(Row::Bottom, Column::Left), Cell::new(Row::Bottom, Column::Right))),
-            (|(Cell { column, .. }, _)| *column == Column::Left, (Cell::new(Row::Top, Column::Left), Cell::new(Row::Bottom, Column::Left))),
-            (|(Cell { column, .. }, _)| *column == Column::Middle, (Cell::new(Row::Top, Column::Middle), Cell::new(Row::Bottom, Column::Middle))),
-            (|(Cell { column, .. }, _)| *column == Column::Right, (Cell::new(Row::Top, Column::Right), Cell::new(Row::Bottom, Column::Right))),
-            (|(Cell { row, column }, _)| column.position() == row.position(), (Cell::new(Row::Bottom, Column::Left), Cell::new(Row::Top, Column::Right))),
-            (|(Cell { row, column }, _)| column.position() == -row.position(), (Cell::new(Row::Top, Column::Left), Cell::new(Row::Bottom, Column::Right))),
+        const WINNING_ARRANGEMENTS: [(fn(&(&Cell, &Option<Mark>)) -> bool, Line); 8] = [
+            (|(Cell { row, .. }, _)| *row == Row::Top, Line::TopRow),
+            (|(Cell { row, .. }, _)| *row == Row::Middle, Line::MiddleRow),
+            (|(Cell { row, .. }, _)| *row == Row::Bottom, Line::BottomRow),
+            (|(Cell { column, .. }, _)| *column == Column::Left, Line::LeftColumn),
+            (|(Cell { column, .. }, _)| *column == Column::Middle, Line::MiddleColumn),
+            (|(Cell { column, .. }, _)| *column == Column::Right, Line::RightColumn),
+            (|(Cell { row, column }, _)| column.position() == row.position(), Line::UpDiagonal),
+            (|(Cell { row, column }, _)| column.position() == -row.position(), Line::DownDiagonal),
         ];
 
-        fn determine_winner(marks: &HashMap<Cell, Option<Mark>>) -> Option<(Mark, (Cell, Cell))> {
+        fn determine_winner(marks: &HashMap<Cell, Option<Mark>>) -> Option<(Mark, Line)> {
             for (arrangement, line) in Self::WINNING_ARRANGEMENTS {
                 let marks = marks.iter()
                     .filter(arrangement)
@@ -57,7 +57,7 @@ mod game {
         }
 
         // behind a getter so the user cannot mutate this field directly
-        pub fn winner(&self) -> Option<(Mark, (Cell, Cell))> {
+        pub fn winner(&self) -> Option<(Mark, Line)> {
             self.winner
         }
 
@@ -75,7 +75,7 @@ mod game {
         pub fn set(&mut self, cell: Cell, mark: Mark) {
             self.marks.insert(cell, Some(mark));
             self.winner = Game::determine_winner(&self.marks);
-            self.over = self.winner.is_some();
+            self.over = self.winner.is_some() || self.marks.len() == 9;
         }
     }
 }
@@ -156,19 +156,19 @@ fn start_game(
             const THIN: Val = Val::Px(6.0);
 
             // top row
-            cell(parent, Cell::new(Row::Top, Column::Left), UiRect::new(NONE, THIN, NONE, THIN));
-            cell(parent, Cell::new(Row::Top, Column::Middle), UiRect::new(NONE, NONE, NONE, THIN));
-            cell(parent, Cell::new(Row::Top, Column::Right), UiRect::new(THIN, NONE, NONE, THIN));
+            cell(parent, Cell::TOP_LEFT, UiRect::new(NONE, THIN, NONE, THIN));
+            cell(parent, Cell::TOP_MIDDLE, UiRect::new(NONE, NONE, NONE, THIN));
+            cell(parent, Cell::TOP_RIGHT, UiRect::new(THIN, NONE, NONE, THIN));
 
             // middle row
-            cell(parent, Cell::new(Row::Middle, Column::Left), UiRect::new(NONE, THIN, NONE, NONE));
-            cell(parent, Cell::new(Row::Middle, Column::Middle), UiRect::new(NONE, NONE, NONE, NONE));
-            cell(parent, Cell::new(Row::Middle, Column::Right), UiRect::new(THIN, NONE, NONE, NONE));
+            cell(parent, Cell::MIDDLE_LEFT, UiRect::new(NONE, THIN, NONE, NONE));
+            cell(parent, Cell::MIDDLE_MIDDLE, UiRect::new(NONE, NONE, NONE, NONE));
+            cell(parent, Cell::MIDDLE_RIGHT, UiRect::new(THIN, NONE, NONE, NONE));
 
             // bottom row
-            cell(parent, Cell::new(Row::Bottom, Column::Left), UiRect::new(NONE, THIN, THIN, NONE));
-            cell(parent, Cell::new(Row::Bottom, Column::Middle), UiRect::new(NONE, NONE, THIN, NONE));
-            cell(parent, Cell::new(Row::Bottom, Column::Right), UiRect::new(THIN, NONE, THIN, NONE));
+            cell(parent, Cell::BOTTOM_LEFT, UiRect::new(NONE, THIN, THIN, NONE));
+            cell(parent, Cell::BOTTOM_MIDDLE, UiRect::new(NONE, NONE, THIN, NONE));
+            cell(parent, Cell::BOTTOM_RIGHT, UiRect::new(THIN, NONE, THIN, NONE));
         });
     });
 }
@@ -412,7 +412,8 @@ fn capture_input(
                     None => {
                         info!("The game ends in a tie");
                     }
-                    Some((mark, (from, to))) => {
+                    Some((mark, line)) => {
+                        let [from, .., to]: [Cell;3] = line.into();
                         info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
                     }
                 }

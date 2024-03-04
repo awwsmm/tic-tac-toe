@@ -37,6 +37,33 @@ impl Column {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Line {
+    BottomRow,
+    MiddleRow,
+    TopRow,
+    LeftColumn,
+    MiddleColumn,
+    RightColumn,
+    UpDiagonal,
+    DownDiagonal,
+}
+
+impl Into<[Cell;3]> for Line {
+    fn into(self) -> [Cell; 3] {
+        match self {
+            Line::BottomRow => [Cell::BOTTOM_LEFT, Cell::BOTTOM_MIDDLE, Cell::BOTTOM_RIGHT],
+            Line::MiddleRow => [Cell::MIDDLE_LEFT, Cell::MIDDLE_MIDDLE, Cell::MIDDLE_RIGHT],
+            Line::TopRow => [Cell::TOP_LEFT, Cell::TOP_MIDDLE, Cell::TOP_RIGHT],
+            Line::LeftColumn => [Cell::TOP_LEFT, Cell::MIDDLE_LEFT, Cell::BOTTOM_LEFT],
+            Line::MiddleColumn => [Cell::TOP_MIDDLE, Cell::MIDDLE_MIDDLE, Cell::BOTTOM_MIDDLE],
+            Line::RightColumn => [Cell::TOP_RIGHT, Cell::MIDDLE_RIGHT, Cell::BOTTOM_RIGHT],
+            Line::UpDiagonal => [Cell::BOTTOM_LEFT, Cell::MIDDLE_MIDDLE, Cell::TOP_RIGHT],
+            Line::DownDiagonal => [Cell::TOP_LEFT, Cell::MIDDLE_MIDDLE, Cell::BOTTOM_RIGHT],
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Component)]
 struct Cell {
     row: Row,
@@ -44,6 +71,16 @@ struct Cell {
 }
 
 impl Cell {
+    const TOP_LEFT: Cell = Cell::new(Row::Top, Column::Left);
+    const TOP_MIDDLE: Cell = Cell::new(Row::Top, Column::Middle);
+    const TOP_RIGHT: Cell = Cell::new(Row::Top, Column::Right);
+    const MIDDLE_LEFT: Cell = Cell::new(Row::Middle, Column::Left);
+    const MIDDLE_MIDDLE: Cell = Cell::new(Row::Middle, Column::Middle);
+    const MIDDLE_RIGHT: Cell = Cell::new(Row::Middle, Column::Right);
+    const BOTTOM_LEFT: Cell = Cell::new(Row::Bottom, Column::Left);
+    const BOTTOM_MIDDLE: Cell = Cell::new(Row::Bottom, Column::Middle);
+    const BOTTOM_RIGHT: Cell = Cell::new(Row::Bottom, Column::Right);
+
     const fn new(row: Row, column: Column) -> Self {
         Self { row, column }
     }
