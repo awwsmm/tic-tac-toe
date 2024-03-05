@@ -38,14 +38,14 @@ enum Line {
 impl Into<[Cell;3]> for Line {
     fn into(self) -> [Cell; 3] {
         match self {
-            Self::BottomRow => [Cell::BOTTOM_LEFT, Cell::BOTTOM_MIDDLE, Cell::BOTTOM_RIGHT],
-            Self::MiddleRow => [Cell::MIDDLE_LEFT, Cell::MIDDLE_MIDDLE, Cell::MIDDLE_RIGHT],
-            Self::TopRow => [Cell::TOP_LEFT, Cell::TOP_MIDDLE, Cell::TOP_RIGHT],
-            Self::LeftColumn => [Cell::TOP_LEFT, Cell::MIDDLE_LEFT, Cell::BOTTOM_LEFT],
-            Self::MiddleColumn => [Cell::TOP_MIDDLE, Cell::MIDDLE_MIDDLE, Cell::BOTTOM_MIDDLE],
-            Self::RightColumn => [Cell::TOP_RIGHT, Cell::MIDDLE_RIGHT, Cell::BOTTOM_RIGHT],
-            Self::UpDiagonal => [Cell::BOTTOM_LEFT, Cell::MIDDLE_MIDDLE, Cell::TOP_RIGHT],
-            Self::DownDiagonal => [Cell::TOP_LEFT, Cell::MIDDLE_MIDDLE, Cell::BOTTOM_RIGHT],
+            Self::BottomRow => [Cell::BottomLeft, Cell::BottomMiddle, Cell::BottomRight],
+            Self::MiddleRow => [Cell::MiddleLeft, Cell::MiddleMiddle, Cell::MiddleRight],
+            Self::TopRow => [Cell::TopLeft, Cell::TopMiddle, Cell::TopRight],
+            Self::LeftColumn => [Cell::TopLeft, Cell::MiddleLeft, Cell::BottomLeft],
+            Self::MiddleColumn => [Cell::TopMiddle, Cell::MiddleMiddle, Cell::BottomMiddle],
+            Self::RightColumn => [Cell::TopRight, Cell::MiddleRight, Cell::BottomRight],
+            Self::UpDiagonal => [Cell::BottomLeft, Cell::MiddleMiddle, Cell::TopRight],
+            Self::DownDiagonal => [Cell::TopLeft, Cell::MiddleMiddle, Cell::BottomRight],
         }
     }
 }
@@ -65,43 +65,84 @@ impl Line {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Component)]
-struct Cell {
-    row: Row,
-    column: Column
+#[derive(Component, PartialEq, Eq, Hash, Clone, Copy, Debug)]
+enum Cell {
+    TopLeft,
+    TopMiddle,
+    TopRight,
+    MiddleLeft,
+    MiddleMiddle,
+    MiddleRight,
+    BottomLeft,
+    BottomMiddle,
+    BottomRight,
 }
 
 impl Cell {
-    const fn new(row: Row, column: Column) -> Self {
-        Self { row, column }
-    }
-
-    const TOP_LEFT: Self = Self::new(Row::Top, Column::Left);
-    const TOP_MIDDLE: Self = Self::new(Row::Top, Column::Middle);
-    const TOP_RIGHT: Self = Self::new(Row::Top, Column::Right);
-    const MIDDLE_LEFT: Self = Self::new(Row::Middle, Column::Left);
-    const MIDDLE_MIDDLE: Self = Self::new(Row::Middle, Column::Middle);
-    const MIDDLE_RIGHT: Self = Self::new(Row::Middle, Column::Right);
-    const BOTTOM_LEFT: Self = Self::new(Row::Bottom, Column::Left);
-    const BOTTOM_MIDDLE: Self = Self::new(Row::Bottom, Column::Middle);
-    const BOTTOM_RIGHT: Self = Self::new(Row::Bottom, Column::Right);
-
     fn all() -> [Self;9] {
         [
-            Self::TOP_LEFT,
-            Self::TOP_MIDDLE,
-            Self::TOP_RIGHT,
-            Self::MIDDLE_LEFT,
-            Self::MIDDLE_MIDDLE,
-            Self::MIDDLE_RIGHT,
-            Self::BOTTOM_LEFT,
-            Self::BOTTOM_MIDDLE,
-            Self::BOTTOM_RIGHT,
+            Self::TopLeft,
+            Self::TopMiddle,
+            Self::TopRight,
+            Self::MiddleLeft,
+            Self::MiddleMiddle,
+            Self::MiddleRight,
+            Self::BottomLeft,
+            Self::BottomMiddle,
+            Self::BottomRight,
         ]
     }
 
+    fn row(&self) -> Row {
+        match self {
+            Cell::TopLeft => Row::Top,
+            Cell::TopMiddle => Row::Top,
+            Cell::TopRight => Row::Top,
+            Cell::MiddleLeft => Row::Middle,
+            Cell::MiddleMiddle => Row::Middle,
+            Cell::MiddleRight => Row::Middle,
+            Cell::BottomLeft => Row::Bottom,
+            Cell::BottomMiddle => Row::Bottom,
+            Cell::BottomRight => Row::Bottom,
+        }
+    }
+
+    fn column(&self) -> Column {
+        match self {
+            Cell::TopLeft => Column::Left,
+            Cell::TopMiddle => Column::Middle,
+            Cell::TopRight => Column::Right,
+            Cell::MiddleLeft => Column::Left,
+            Cell::MiddleMiddle => Column::Middle,
+            Cell::MiddleRight => Column::Right,
+            Cell::BottomLeft => Column::Left,
+            Cell::BottomMiddle => Column::Middle,
+            Cell::BottomRight => Column::Right,
+        }
+    }
+
+    fn from(row: Row, column: Column) -> Cell {
+        match row {
+            Row::Bottom => match column {
+                Column::Left => Cell::BottomLeft,
+                Column::Middle => Cell::BottomMiddle,
+                Column::Right => Cell::BottomRight,
+            }
+            Row::Middle => match column {
+                Column::Left => Cell::MiddleLeft,
+                Column::Middle => Cell::MiddleMiddle,
+                Column::Right => Cell::MiddleRight,
+            }
+            Row::Top => match column {
+                Column::Left => Cell::TopLeft,
+                Column::Middle => Cell::TopMiddle,
+                Column::Right => Cell::TopRight,
+            }
+        }
+    }
+
     fn is_corner(&self) -> bool {
-        *self == Self::TOP_LEFT || *self == Self::TOP_RIGHT || *self == Self::BOTTOM_LEFT || *self == Self::BOTTOM_RIGHT
+        *self == Self::TopLeft || *self == Self::TopRight || *self == Self::BottomLeft || *self == Self::BottomRight
     }
 }
 
@@ -111,7 +152,7 @@ impl Grid {
     fn hit_square(pos: Vec2) -> Option<Cell> {
         match (Row::containing(pos.y), Column::containing(pos.x)) {
             (None, _) | (_, None) => None,
-            (Some(row), Some(col)) => Some(Cell::new(row, col))
+            (Some(row), Some(col)) => Some(Cell::from(row, col))
         }
     }
 }

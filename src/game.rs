@@ -28,14 +28,14 @@ mod game {
 
     impl Game {
         const WINNING_ARRANGEMENTS: [(fn(&(&Cell, &Option<Mark>)) -> bool, Line); 8] = [
-            (|(Cell { row, .. }, _)| *row == Row::Top, Line::TopRow),
-            (|(Cell { row, .. }, _)| *row == Row::Middle, Line::MiddleRow),
-            (|(Cell { row, .. }, _)| *row == Row::Bottom, Line::BottomRow),
-            (|(Cell { column, .. }, _)| *column == Column::Left, Line::LeftColumn),
-            (|(Cell { column, .. }, _)| *column == Column::Middle, Line::MiddleColumn),
-            (|(Cell { column, .. }, _)| *column == Column::Right, Line::RightColumn),
-            (|(Cell { row, column }, _)| column.position() == row.position(), Line::UpDiagonal),
-            (|(Cell { row, column }, _)| column.position() == -row.position(), Line::DownDiagonal),
+            (|(cell, _)| cell.row() == Row::Top, Line::TopRow),
+            (|(cell, _)| cell.row() == Row::Middle, Line::MiddleRow),
+            (|(cell, _)| cell.row() == Row::Bottom, Line::BottomRow),
+            (|(cell, _)| cell.column() == Column::Left, Line::LeftColumn),
+            (|(cell, _)| cell.column() == Column::Middle, Line::MiddleColumn),
+            (|(cell, _)| cell.column() == Column::Right, Line::RightColumn),
+            (|(cell, _)| cell.column().position() == cell.row().position(), Line::UpDiagonal),
+            (|(cell, _)| cell.column().position() == -cell.row().position(), Line::DownDiagonal),
         ];
 
         fn determine_winner(marks: &HashMap<Cell, Option<Mark>>) -> Option<(Mark, Line)> {
@@ -126,8 +126,8 @@ fn start_game(
             NodeBundle {
                 style: Style {
                     display: Display::Grid,
-                    grid_row: GridPlacement::start((-cell.row.position() + 2) as i16),
-                    grid_column: GridPlacement::start((cell.column.position() + 2) as i16),
+                    grid_row: GridPlacement::start((-cell.row().position() + 2) as i16),
+                    grid_column: GridPlacement::start((cell.column().position() + 2) as i16),
                     justify_items: JustifyItems::Center,
                     align_items: AlignItems::Center,
                     border,
@@ -156,19 +156,19 @@ fn start_game(
             const THIN: Val = Val::Px(6.0);
 
             // top row
-            cell(parent, Cell::TOP_LEFT, UiRect::new(NONE, THIN, NONE, THIN));
-            cell(parent, Cell::TOP_MIDDLE, UiRect::new(NONE, NONE, NONE, THIN));
-            cell(parent, Cell::TOP_RIGHT, UiRect::new(THIN, NONE, NONE, THIN));
+            cell(parent, Cell::TopLeft, UiRect::new(NONE, THIN, NONE, THIN));
+            cell(parent, Cell::TopMiddle, UiRect::new(NONE, NONE, NONE, THIN));
+            cell(parent, Cell::TopRight, UiRect::new(THIN, NONE, NONE, THIN));
 
             // middle row
-            cell(parent, Cell::MIDDLE_LEFT, UiRect::new(NONE, THIN, NONE, NONE));
-            cell(parent, Cell::MIDDLE_MIDDLE, UiRect::new(NONE, NONE, NONE, NONE));
-            cell(parent, Cell::MIDDLE_RIGHT, UiRect::new(THIN, NONE, NONE, NONE));
+            cell(parent, Cell::MiddleLeft, UiRect::new(NONE, THIN, NONE, NONE));
+            cell(parent, Cell::MiddleMiddle, UiRect::new(NONE, NONE, NONE, NONE));
+            cell(parent, Cell::MiddleRight, UiRect::new(THIN, NONE, NONE, NONE));
 
             // bottom row
-            cell(parent, Cell::BOTTOM_LEFT, UiRect::new(NONE, THIN, THIN, NONE));
-            cell(parent, Cell::BOTTOM_MIDDLE, UiRect::new(NONE, NONE, THIN, NONE));
-            cell(parent, Cell::BOTTOM_RIGHT, UiRect::new(THIN, NONE, THIN, NONE));
+            cell(parent, Cell::BottomLeft, UiRect::new(NONE, THIN, THIN, NONE));
+            cell(parent, Cell::BottomMiddle, UiRect::new(NONE, NONE, THIN, NONE));
+            cell(parent, Cell::BottomRight, UiRect::new(THIN, NONE, THIN, NONE));
         });
     });
 }
@@ -368,15 +368,15 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
 
     fn index(cell: Cell) -> usize {
         match cell {
-            Cell::TOP_LEFT => 0,
-            Cell::TOP_MIDDLE => 1,
-            Cell::TOP_RIGHT => 2,
-            Cell::MIDDLE_LEFT => 3,
-            Cell::MIDDLE_MIDDLE => 4,
-            Cell::MIDDLE_RIGHT => 5,
-            Cell::BOTTOM_LEFT => 6,
-            Cell::BOTTOM_MIDDLE => 7,
-            Cell::BOTTOM_RIGHT => 8,
+            Cell::TopLeft => 0,
+            Cell::TopMiddle => 1,
+            Cell::TopRight => 2,
+            Cell::MiddleLeft => 3,
+            Cell::MiddleMiddle => 4,
+            Cell::MiddleRight => 5,
+            Cell::BottomLeft => 6,
+            Cell::BottomMiddle => 7,
+            Cell::BottomRight => 8,
         }
     }
 
@@ -402,7 +402,7 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
 
         // case (3)
         match cells_and_marks {
-            [_, (cell, None), _] if cell == Cell::MIDDLE_MIDDLE => weights[index(cell)] += 2 * scale,
+            [_, (cell, None), _] if cell == Cell::MiddleMiddle => weights[index(cell)] += 2 * scale,
             _ => {}
         }
 
