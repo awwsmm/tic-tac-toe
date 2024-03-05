@@ -34,6 +34,12 @@ enum GameMode {
     TwoPlayers,
 }
 
+trait Enumerated {
+    type Item;
+    const CARDINALITY: usize;
+    fn variants() -> Vec<Self::Item>;
+}
+
 fn main() {
     App::new()
         .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112

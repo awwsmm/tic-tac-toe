@@ -1,9 +1,9 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use dimension_macro_derive::Dimension;
+use dimension_macro_derive::{Dimension, Enumerated};
 use rand::prelude::*;
 
-use crate::{AppState, clear_entities, Difficulty, draw_screen, GameMode, HumanMark};
+use crate::{AppState, clear_entities, Difficulty, draw_screen, Enumerated, GameMode, HumanMark};
 
 #[derive(States, Clone, Hash, PartialEq, Eq, Debug, Default)]
 enum GameState {
@@ -28,7 +28,7 @@ enum Column {
     Right
 }
 
-#[derive(Component, PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(Component, Enumerated, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 enum Cell {
     TopLeft,
     TopMiddle,
@@ -42,20 +42,6 @@ enum Cell {
 }
 
 impl Cell {
-    fn all() -> [Self;9] {
-        [
-            Self::TopLeft,
-            Self::TopMiddle,
-            Self::TopRight,
-            Self::MiddleLeft,
-            Self::MiddleMiddle,
-            Self::MiddleRight,
-            Self::BottomLeft,
-            Self::BottomMiddle,
-            Self::BottomRight,
-        ]
-    }
-
     fn row(&self) -> Row {
         match self {
             Cell::TopLeft => Row::Top,
@@ -116,7 +102,7 @@ impl Cell {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Enumerated, Clone, Copy)]
 enum Line {
     BottomRow,
     MiddleRow,
@@ -129,19 +115,6 @@ enum Line {
 }
 
 impl Line {
-    fn all() -> [Self;8] {
-        [
-            Self::BottomRow,
-            Self::MiddleRow,
-            Self::TopRow,
-            Self::LeftColumn,
-            Self::MiddleColumn,
-            Self::RightColumn,
-            Self::UpDiagonal,
-            Self::DownDiagonal,
-        ]
-    }
-
     fn cells(&self) -> [Cell; 3] {
         match self {
             Self::BottomRow => [Cell::BottomLeft, Cell::BottomMiddle, Cell::BottomRight],
@@ -558,7 +531,7 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
         }
     }
 
-    Line::all().map(|line| {
+    Line::variants().iter().for_each(|line| {
         let cells_and_marks = line.cells().map(|cell| (cell, game.get(cell)));
 
         // case (1)
@@ -598,10 +571,10 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
     info!("cell weights (higher is better): {:?}", weights);
 
     let (index, _) = weights.iter().enumerate()
-        .filter(|(index, _)| game.get(Cell::all()[*index]).is_none())
+        .filter(|(index, _)| game.get(Cell::variants()[*index]).is_none())
         .max_by(|(_, &w1), (_, w2)| w1.cmp(w2)).expect("unable to find max weight");
 
-    let chosen_cell = Cell::all()[index];
+    let chosen_cell = Cell::variants()[index];
 
     info!("optimal cell for computer to choose is {:?} (on {:?} mode)", chosen_cell, difficulty);
 

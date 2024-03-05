@@ -7,18 +7,18 @@ use syn::*;
 const GRID_SPACING: f32 = 250.0;
 const HALFSIZE: f32 = GRID_SPACING / 2.0;
 
-#[proc_macro_derive(Dimension)]
-pub fn dimension_macro_derive(input: TokenStream) -> TokenStream {
-    let ast = syn::parse(input).unwrap();
-    impl_dimension_macro(&ast)
-}
-
 macro_rules! derive_error {
     ($string: tt) => {
         Error::new(Span::call_site(), $string)
             .to_compile_error()
             .into()
     };
+}
+
+#[proc_macro_derive(Dimension)]
+pub fn dimension_macro_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_dimension_macro(&ast)
 }
 
 fn impl_dimension_macro(ast: &syn::DeriveInput) -> TokenStream {
@@ -77,5 +77,36 @@ fn impl_dimension_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
         _ => return derive_error!("Dimension is only implemented for enums")
+    }
+}
+
+#[proc_macro_derive(Enumerated)]
+pub fn enumerated_macro_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse(input).unwrap();
+    impl_enumerated_macro(&ast)
+}
+
+fn impl_enumerated_macro(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+    match &ast.data {
+        Data::Enum(data_enum) => {
+            let variants = data_enum.variants.iter().map(|each| quote!(#name::#each));
+            let cardinality = variants.len();
+
+            let gen = quote! {
+                impl Enumerated for #name {
+                    type Item = #name;
+
+                    const CARDINALITY: usize = #cardinality;
+
+                    fn variants() -> Vec<Self::Item> {
+                        vec![#(#variants), *]
+                    }
+                }
+            };
+
+            gen.into()
+        }
+        _ => return derive_error!("Enumerated is only implemented for enums")
     }
 }
