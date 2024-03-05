@@ -1,6 +1,9 @@
+use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use dimension_macro_derive::Dimension;
+use rand::prelude::*;
 
-use crate::*;
+use crate::{AppState, clear_entities, Difficulty, draw_screen, GameMode, HumanMark};
 
 #[derive(States, Clone, Hash, PartialEq, Eq, Debug, Default)]
 enum GameState {
@@ -11,11 +14,188 @@ enum GameState {
     GameOver
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
+enum Row {
+    Bottom,
+    Middle,
+    Top,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
+enum Column {
+    Left,
+    Middle,
+    Right
+}
+
+#[derive(Component, PartialEq, Eq, Hash, Clone, Copy, Debug)]
+enum Cell {
+    TopLeft,
+    TopMiddle,
+    TopRight,
+    MiddleLeft,
+    MiddleMiddle,
+    MiddleRight,
+    BottomLeft,
+    BottomMiddle,
+    BottomRight,
+}
+
+impl Cell {
+    fn all() -> [Self;9] {
+        [
+            Self::TopLeft,
+            Self::TopMiddle,
+            Self::TopRight,
+            Self::MiddleLeft,
+            Self::MiddleMiddle,
+            Self::MiddleRight,
+            Self::BottomLeft,
+            Self::BottomMiddle,
+            Self::BottomRight,
+        ]
+    }
+
+    fn row(&self) -> Row {
+        match self {
+            Cell::TopLeft => Row::Top,
+            Cell::TopMiddle => Row::Top,
+            Cell::TopRight => Row::Top,
+            Cell::MiddleLeft => Row::Middle,
+            Cell::MiddleMiddle => Row::Middle,
+            Cell::MiddleRight => Row::Middle,
+            Cell::BottomLeft => Row::Bottom,
+            Cell::BottomMiddle => Row::Bottom,
+            Cell::BottomRight => Row::Bottom,
+        }
+    }
+
+    fn column(&self) -> Column {
+        match self {
+            Cell::TopLeft => Column::Left,
+            Cell::TopMiddle => Column::Middle,
+            Cell::TopRight => Column::Right,
+            Cell::MiddleLeft => Column::Left,
+            Cell::MiddleMiddle => Column::Middle,
+            Cell::MiddleRight => Column::Right,
+            Cell::BottomLeft => Column::Left,
+            Cell::BottomMiddle => Column::Middle,
+            Cell::BottomRight => Column::Right,
+        }
+    }
+
+    fn from(row: Row, column: Column) -> Cell {
+        match row {
+            Row::Bottom => match column {
+                Column::Left => Cell::BottomLeft,
+                Column::Middle => Cell::BottomMiddle,
+                Column::Right => Cell::BottomRight,
+            }
+            Row::Middle => match column {
+                Column::Left => Cell::MiddleLeft,
+                Column::Middle => Cell::MiddleMiddle,
+                Column::Right => Cell::MiddleRight,
+            }
+            Row::Top => match column {
+                Column::Left => Cell::TopLeft,
+                Column::Middle => Cell::TopMiddle,
+                Column::Right => Cell::TopRight,
+            }
+        }
+    }
+
+    fn is_corner(&self) -> bool {
+        *self == Self::TopLeft || *self == Self::TopRight || *self == Self::BottomLeft || *self == Self::BottomRight
+    }
+
+    fn hit(pos: Vec2) -> Option<Cell> {
+        match (Row::containing(pos.y), Column::containing(pos.x)) {
+            (None, _) | (_, None) => None,
+            (Some(row), Some(col)) => Some(Cell::from(row, col))
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Line {
+    BottomRow,
+    MiddleRow,
+    TopRow,
+    LeftColumn,
+    MiddleColumn,
+    RightColumn,
+    UpDiagonal,
+    DownDiagonal,
+}
+
+impl Into<[Cell;3]> for Line {
+    fn into(self) -> [Cell; 3] {
+        match self {
+            Self::BottomRow => [Cell::BottomLeft, Cell::BottomMiddle, Cell::BottomRight],
+            Self::MiddleRow => [Cell::MiddleLeft, Cell::MiddleMiddle, Cell::MiddleRight],
+            Self::TopRow => [Cell::TopLeft, Cell::TopMiddle, Cell::TopRight],
+            Self::LeftColumn => [Cell::TopLeft, Cell::MiddleLeft, Cell::BottomLeft],
+            Self::MiddleColumn => [Cell::TopMiddle, Cell::MiddleMiddle, Cell::BottomMiddle],
+            Self::RightColumn => [Cell::TopRight, Cell::MiddleRight, Cell::BottomRight],
+            Self::UpDiagonal => [Cell::BottomLeft, Cell::MiddleMiddle, Cell::TopRight],
+            Self::DownDiagonal => [Cell::TopLeft, Cell::MiddleMiddle, Cell::BottomRight],
+        }
+    }
+}
+
+impl Line {
+    fn all() -> [Self;8] {
+        [
+            Self::BottomRow,
+            Self::MiddleRow,
+            Self::TopRow,
+            Self::LeftColumn,
+            Self::MiddleColumn,
+            Self::RightColumn,
+            Self::UpDiagonal,
+            Self::DownDiagonal,
+        ]
+    }
+}
+
+#[derive(Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
+enum Mark {
+    #[default]
+    X,
+    O
+}
+
+impl std::fmt::Display for Mark {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mark::X => write!(f, "X"),
+            Mark::O => write!(f, "O"),
+        }
+    }
+}
+
+impl Mark {
+    fn color(&self) -> Color {
+        match self {
+            Mark::X => Color::RED,
+            Mark::O => Color::BLUE,
+        }
+    }
+
+    fn is(&self, human_mark: HumanMark) -> bool {
+        match self {
+            Mark::X if human_mark == HumanMark::HumanX => true,
+            Mark::O if human_mark == HumanMark::HumanO => true,
+            _ => false
+        }
+    }
+}
+
 // Game is inside game module so private fields of Game cannot be accessed / mutated directly
 mod game {
     use bevy::utils::{HashMap, HashSet};
 
-    use crate::{Cell, Column, Line, Mark, Row};
+    use crate::game::{Cell, Column, Line, Mark, Row};
 
     // All of Game's fields are private so that we can recalculate the winner when a new mark is made on the board
     // impl Default is required for impl Default on StateInfo
@@ -338,7 +518,7 @@ fn capture_user_input(
 
     maybe_touch_coordinates.or(maybe_click_coordinates)
         .and_then(|window_coordinates| camera.viewport_to_world_2d(camera_transform, window_coordinates))
-        .and_then(|world_coordinates| Grid::hit_square(world_coordinates))
+        .and_then(|world_coordinates| Cell::hit(world_coordinates))
 }
 
 fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Difficulty) -> Cell {
@@ -454,7 +634,7 @@ fn capture_input(
     let mark = info.current_player;
 
     let maybe_cell = match *game_mode {
-        GameMode::OnePlayer if !human_mark.is(mark) => Some(generate_computer_input(&info.game, mark, *difficulty)),
+        GameMode::OnePlayer if !mark.is(*human_mark) => Some(generate_computer_input(&info.game, mark, *difficulty)),
         _ => capture_user_input(windows, cameras, touch_input, mouse_button_input)
     };
 
