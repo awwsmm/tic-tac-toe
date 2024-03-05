@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use dimension_macro_derive::Dimension;
 use rand::prelude::*;
 
-mod splash;
+mod menu;
 mod game;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Dimension, Component)]
@@ -119,11 +119,11 @@ impl Grid {
 #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States, Component)]
 enum AppState {
     #[default]
-    Splash,
+    Menu,
     Game,
 }
 
-// X is always the first player
+// when used as a Resource, Mark is the human player (the other player is the computer)
 #[derive(Resource, Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
 enum Mark {
     #[default]
@@ -149,23 +149,32 @@ impl Mark {
     }
 }
 
-#[derive(Resource, Component, Clone, Copy)]
+#[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Difficulty {
+    Easy,
+    Medium,
+    #[default]
+    Hard,
+}
+
+#[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum GameMode {
-    OnePlayer {
-        human_mark: Mark // human goes first by default
-    },
+    OnePlayer,
+    #[default]
     TwoPlayers,
 }
 
 fn main() {
     App::new()
         .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112
-        .insert_resource(GameMode::TwoPlayers)
+        .insert_resource(GameMode::default())
+        .insert_resource(Mark::default())
+        .insert_resource(Difficulty::default())
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .init_state::<AppState>()
         .add_systems(Startup, setup)
-        .add_plugins((splash::plugin, game::plugin))
+        .add_plugins((menu::plugin, game::plugin))
         .run();
 }
 
@@ -200,10 +209,4 @@ fn clear_entities<T: Component>(to_despawn: Query<Entity, With<T>>, mut commands
     for entity in &to_despawn {
         commands.entity(entity).despawn_recursive();
     }
-}
-
-const DEBUG_UI: bool = false;
-
-fn when_debugging<T: Default>(t: T) -> T {
-    if DEBUG_UI { t } else { T::default() }
 }

@@ -214,24 +214,20 @@ fn game_over(
         parent.spawn(NodeBundle {
             style: Style {
                 width: Val::Percent(61.8),
-                border: when_debugging(UiRect::all(Val::Px(1.0))),
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
             background_color: Color::rgba(1.0, 1.0, 1.0, 0.85).into(),
-            border_color: when_debugging(Color::RED.into()),
             ..default()
         }).with_children(|parent| {
 
             // top row
             parent.spawn(NodeBundle {
                 style: Style {
-                    border: when_debugging(UiRect::all(Val::Px(1.0))),
                     justify_content: JustifyContent::Center,
                     padding: UiRect::all(Val::Px(10.0)),
                     ..default()
                 },
-                border_color: when_debugging(Color::GREEN.into()),
                 ..default()
             }).with_children(|parent| {
                 fn spawn_text(
@@ -309,7 +305,7 @@ fn game_over_buttons(
                 GameOverButton::BackToMenu => {
                     *info = StateInfo::default();
                     next_game_state.set(GameState::GameNotInProgress);
-                    next_app_state.set(AppState::Splash);
+                    next_app_state.set(AppState::Menu);
                 }
             }
         }
@@ -343,12 +339,6 @@ fn capture_user_input(
     maybe_touch_coordinates.or(maybe_click_coordinates)
         .and_then(|window_coordinates| camera.viewport_to_world_2d(camera_transform, window_coordinates))
         .and_then(|world_coordinates| Grid::hit_square(world_coordinates))
-}
-
-enum Difficulty {
-    Easy,
-    Medium,
-    Hard,
 }
 
 fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Difficulty) -> Cell {
@@ -418,13 +408,17 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
 
         // case (4)
         match cells_and_marks {
+            [(c1, None), _, (c2, None)] if c1.is_corner() => {
+                weights[index(c1)] += 1 * scale;
+                weights[index(c2)] += 1 * scale
+            },
             [(cell, None), _, _] if cell.is_corner() => weights[index(cell)] += 1 * scale,
             [_, _, (cell, None)] if cell.is_corner() => weights[index(cell)] += 1 * scale,
             _ => {}
         }
     });
 
-    debug!("cell weights (higher is better): {:?}", weights);
+    info!("cell weights (higher is better): {:?}", weights);
 
     let (index, _) = weights.iter().enumerate()
         .filter(|(index, _)| game.get(Cell::all()[*index]).is_none())
@@ -432,7 +426,7 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
 
     let chosen_cell = Cell::all()[index];
 
-    debug!("optimal cell for computer to choose is {:?}", chosen_cell);
+    info!("optimal cell for computer to choose is {:?} (on {:?} mode)", chosen_cell, difficulty);
 
     chosen_cell
 }
@@ -449,6 +443,8 @@ fn capture_input(
     current_game_state: Res<State<GameState>>,
     mut next_game_state: ResMut<NextState<GameState>>,
     game_mode: Res<GameMode>,
+    human_mark: Res<Mark>,
+    difficulty: Res<Difficulty>,
 ) {
 
     // if the winner has already been decided, we should ignore user input until a new game is started
@@ -458,7 +454,7 @@ fn capture_input(
     let mark = info.current_player;
 
     let maybe_cell = match *game_mode {
-        GameMode::OnePlayer { human_mark } if human_mark != mark => Some(generate_computer_input(&info.game, mark, Difficulty::Easy)),
+        GameMode::OnePlayer if *human_mark != mark => Some(generate_computer_input(&info.game, mark, *difficulty)),
         _ => capture_user_input(windows, cameras, touch_input, mouse_button_input)
     };
 
