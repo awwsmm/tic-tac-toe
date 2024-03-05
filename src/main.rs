@@ -1,7 +1,7 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use dimension_macro_derive::Enumerated;
+use macros::Enumerated;
 
 mod menu;
 mod game;

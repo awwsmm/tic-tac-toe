@@ -1519,15 +1519,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dimension_macro_derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.51",
-]
-
-[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2288,6 +2279,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.51",
 ]
 
 [[package]]
@@ -3254,7 +3254,7 @@ name = "tic-tac-toe"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "dimension_macro_derive",
+ "macros",
  "rand",
 ]
 
