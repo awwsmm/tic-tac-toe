@@ -128,21 +128,6 @@ enum Line {
     DownDiagonal,
 }
 
-impl Into<[Cell;3]> for Line {
-    fn into(self) -> [Cell; 3] {
-        match self {
-            Self::BottomRow => [Cell::BottomLeft, Cell::BottomMiddle, Cell::BottomRight],
-            Self::MiddleRow => [Cell::MiddleLeft, Cell::MiddleMiddle, Cell::MiddleRight],
-            Self::TopRow => [Cell::TopLeft, Cell::TopMiddle, Cell::TopRight],
-            Self::LeftColumn => [Cell::TopLeft, Cell::MiddleLeft, Cell::BottomLeft],
-            Self::MiddleColumn => [Cell::TopMiddle, Cell::MiddleMiddle, Cell::BottomMiddle],
-            Self::RightColumn => [Cell::TopRight, Cell::MiddleRight, Cell::BottomRight],
-            Self::UpDiagonal => [Cell::BottomLeft, Cell::MiddleMiddle, Cell::TopRight],
-            Self::DownDiagonal => [Cell::TopLeft, Cell::MiddleMiddle, Cell::BottomRight],
-        }
-    }
-}
-
 impl Line {
     fn all() -> [Self;8] {
         [
@@ -155,6 +140,19 @@ impl Line {
             Self::UpDiagonal,
             Self::DownDiagonal,
         ]
+    }
+
+    fn cells(&self) -> [Cell; 3] {
+        match self {
+            Self::BottomRow => [Cell::BottomLeft, Cell::BottomMiddle, Cell::BottomRight],
+            Self::MiddleRow => [Cell::MiddleLeft, Cell::MiddleMiddle, Cell::MiddleRight],
+            Self::TopRow => [Cell::TopLeft, Cell::TopMiddle, Cell::TopRight],
+            Self::LeftColumn => [Cell::TopLeft, Cell::MiddleLeft, Cell::BottomLeft],
+            Self::MiddleColumn => [Cell::TopMiddle, Cell::MiddleMiddle, Cell::BottomMiddle],
+            Self::RightColumn => [Cell::TopRight, Cell::MiddleRight, Cell::BottomRight],
+            Self::UpDiagonal => [Cell::BottomLeft, Cell::MiddleMiddle, Cell::TopRight],
+            Self::DownDiagonal => [Cell::TopLeft, Cell::MiddleMiddle, Cell::BottomRight],
+        }
     }
 }
 
@@ -561,8 +559,7 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
     }
 
     Line::all().map(|line| {
-        let cells: [Cell;3] = line.into();
-        let cells_and_marks = cells.map(|cell| (cell, game.get(cell)));
+        let cells_and_marks = line.cells().map(|cell| (cell, game.get(cell)));
 
         // case (1)
         match cells_and_marks {
@@ -675,7 +672,7 @@ fn capture_input(
                         info!("The game ends in a tie");
                     }
                     Some((mark, line)) => {
-                        let [from, .., to]: [Cell;3] = line.into();
+                        let [from, .., to] = line.cells();
                         info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
                     }
                 }
