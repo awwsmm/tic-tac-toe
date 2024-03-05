@@ -153,8 +153,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             },
                             ..default()
                         }).with_children(|parent| {
-                            button("Human X", Mark::X, parent, font.clone(), 40.0);
-                            button("Human O", Mark::O, parent, font.clone(), 40.0);
+                            button("Human X", HumanMark::HumanX, parent, font.clone(), 40.0);
+                            button("Human O", HumanMark::HumanO, parent, font.clone(), 40.0);
                         });
 
                         button("Two Players", GameMode::TwoPlayers, parent, font.clone(), 60.0);
@@ -183,8 +183,8 @@ fn hover_difficulty_button(
 }
 
 fn hover_mark_button(
-    mut buttons: Query<(&Interaction, &mut BorderColor, &Mark)>,
-    selected: Res<Mark>,
+    mut buttons: Query<(&Interaction, &mut BorderColor, &HumanMark)>,
+    selected: Res<HumanMark>,
 ) {
     for (interaction, mut color, value) in buttons.iter_mut() {
         match interaction {
@@ -217,8 +217,8 @@ fn hover_start_button(
 }
 
 fn update_mark(
-    query: Query<(&Interaction, &Mark), Changed<Interaction>>,
-    mut mark: ResMut<Mark>,
+    query: Query<(&Interaction, &HumanMark), Changed<Interaction>>,
+    mut mark: ResMut<HumanMark>,
 ) {
     for (interaction, new_mark) in &query {
         if let Interaction::Pressed = interaction {

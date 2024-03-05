@@ -124,7 +124,7 @@ enum AppState {
 }
 
 // when used as a Resource, Mark is the human player (the other player is the computer)
-#[derive(Resource, Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
 enum Mark {
     #[default]
     X,
@@ -150,6 +150,23 @@ impl Mark {
 }
 
 #[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum HumanMark {
+    #[default]
+    HumanX,
+    HumanO
+}
+
+impl HumanMark {
+    fn is(&self, mark: Mark) -> bool {
+        match self {
+            HumanMark::HumanX if mark == Mark::X => true,
+            HumanMark::HumanO if mark == Mark::O => true,
+            _ => false
+        }
+    }
+}
+
+#[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Difficulty {
     Easy,
     Medium,
@@ -168,7 +185,7 @@ fn main() {
     App::new()
         .insert_resource(AssetMetaCheck::Never) // https://github.com/bevyengine/bevy/issues/10157#issuecomment-1849092112
         .insert_resource(GameMode::default())
-        .insert_resource(Mark::default())
+        .insert_resource(HumanMark::default())
         .insert_resource(Difficulty::default())
         .add_plugins(DefaultPlugins)
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))

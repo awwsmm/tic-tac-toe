@@ -88,7 +88,7 @@ struct StateInfo {
 
 pub fn plugin(app: &mut App) {
     app
-        .insert_resource(Mark::default())
+        .insert_resource(HumanMark::default())
         .insert_resource(StateInfo::default())
         .add_systems(OnEnter(AppState::Game), start_game)
         .init_state::<GameState>()
@@ -443,7 +443,7 @@ fn capture_input(
     current_game_state: Res<State<GameState>>,
     mut next_game_state: ResMut<NextState<GameState>>,
     game_mode: Res<GameMode>,
-    human_mark: Res<Mark>,
+    human_mark: Res<HumanMark>,
     difficulty: Res<Difficulty>,
 ) {
 
@@ -454,7 +454,7 @@ fn capture_input(
     let mark = info.current_player;
 
     let maybe_cell = match *game_mode {
-        GameMode::OnePlayer if *human_mark != mark => Some(generate_computer_input(&info.game, mark, *difficulty)),
+        GameMode::OnePlayer if !human_mark.is(mark) => Some(generate_computer_input(&info.game, mark, *difficulty)),
         _ => capture_user_input(windows, cameras, touch_input, mouse_button_input)
     };
 
