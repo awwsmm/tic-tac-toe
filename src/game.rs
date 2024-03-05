@@ -3,7 +3,8 @@ use bevy::prelude::*;
 use dimension_macro_derive::Dimension;
 use rand::prelude::*;
 
-use crate::{AppState, clear_entities, Difficulty, draw_screen, Enumerated, GameMode, HumanMark};
+use crate::{AppState, clear_entities, draw_screen, Enumerated};
+use crate::settings::{Difficulty, GameMode, HumanMark};
 
 #[derive(States, Clone, Hash, PartialEq, Eq, Debug, Default)]
 enum GameState {

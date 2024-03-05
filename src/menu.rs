@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use crate::{AppState, clear_entities, Difficulty, draw_screen, GameMode, HumanMark, Setting};
+use crate::{AppState, clear_entities, draw_screen};
+use crate::settings::{Difficulty, GameMode, HumanMark, Setting};
 
 pub fn plugin(app: &mut App) {
     app
