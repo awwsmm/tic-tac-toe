@@ -1,6 +1,7 @@
 use bevy::asset::AssetMetaCheck;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use dimension_macro_derive::Enumerated;
 
 mod menu;
 mod game;
@@ -12,7 +13,10 @@ enum AppState {
     Game,
 }
 
-#[derive(Resource, Component, Clone, Copy, Default, PartialEq, Eq)]
+// A Setting is any enum which (1) has a variants() method, (2) can be Displayed, and (3) is a Component
+trait Setting: std::fmt::Display + Component + Clone + Copy {}
+
+#[derive(Resource, Component, Enumerated, Clone, Copy, Default, PartialEq, Eq)]
 enum HumanMark {
     #[default]
     HumanX,
@@ -28,7 +32,9 @@ impl std::fmt::Display for HumanMark {
     }
 }
 
-#[derive(Resource, Component, Clone, Copy, Default, PartialEq, Eq)]
+impl Setting for HumanMark {}
+
+#[derive(Resource, Component, Enumerated, Clone, Copy, Default, PartialEq, Eq)]
 enum Difficulty {
     Easy,
     Medium,
@@ -46,7 +52,9 @@ impl std::fmt::Display for Difficulty {
     }
 }
 
-#[derive(Resource, Component, Clone, Copy, Default, PartialEq, Eq)]
+impl Setting for Difficulty {}
+
+#[derive(Resource, Component, Enumerated, Clone, Copy, Default, PartialEq, Eq)]
 enum GameMode {
     OnePlayer,
     #[default]
@@ -61,6 +69,8 @@ impl std::fmt::Display for GameMode {
         })
     }
 }
+
+impl Setting for GameMode {}
 
 trait Enumerated {
     type Item;

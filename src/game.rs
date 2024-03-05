@@ -1,6 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use dimension_macro_derive::{Dimension, Enumerated};
+use dimension_macro_derive::Dimension;
 use rand::prelude::*;
 
 use crate::{AppState, clear_entities, Difficulty, draw_screen, Enumerated, GameMode, HumanMark};

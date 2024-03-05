@@ -1,4 +1,4 @@
-use proc_macro::TokenStream;
+use proc_macro::{Group, TokenStream, TokenTree};
 
 use proc_macro2::Span;
 use quote::quote;
@@ -82,7 +82,44 @@ fn impl_dimension_macro(ast: &syn::DeriveInput) -> TokenStream {
 
 #[proc_macro_derive(Enumerated)]
 pub fn enumerated_macro_derive(input: TokenStream) -> TokenStream {
-    let ast = syn::parse(input).unwrap();
+
+    // filters "#[default]" out of enums, otherwise data.enum.variants.iter() has a hard time
+    //
+    // enum Difficulty {      enum Difficulty {
+    //     Easy,                  Easy,
+    //     Medium,        =>      Medium,
+    //     #[default]             Hard,
+    //     Hard,              }
+    // }
+
+    // uncomment to see TokenStream before this change
+    // let file = syn::parse_file(&input.to_string()).unwrap();
+    // println!("{}", prettyplease::unparse(&file));
+
+    let token_stream = input.into_iter().map(|token| {
+        match token {
+            TokenTree::Group(group) => {
+                let delimiter = group.delimiter();
+
+                let tokens = group.stream().into_iter().flat_map(|token| {
+                    match token {
+                        TokenTree::Group(_) => None, // throw away group: [default]
+                        TokenTree::Punct(p) if p.as_char() != ',' => None, // throw away punct: #
+                        other => Some(other)
+                    }
+                }).collect::<TokenStream>();
+
+                TokenTree::Group(Group::new(delimiter.into(), tokens.into()))
+            }
+            other => other
+        }
+    }).collect::<TokenStream>();
+
+    // uncomment to see TokenStream after this change
+    // let file = syn::parse_file(&token_stream.to_string()).unwrap();
+    // println!("{}", prettyplease::unparse(&file));
+
+    let ast = syn::parse(token_stream).unwrap();
     impl_enumerated_macro(&ast)
 }
 

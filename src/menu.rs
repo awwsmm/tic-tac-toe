@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{AppState, clear_entities, Difficulty, draw_screen, GameMode, HumanMark};
+use crate::{AppState, clear_entities, Difficulty, draw_screen, GameMode, HumanMark, Setting};
 
 pub fn plugin(app: &mut App) {
     app
@@ -78,9 +78,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 word(parent, ['T', 'A', 'C'], font.clone());
                 word(parent, ['T', 'O', 'E'], font.clone());
 
-                fn button<C: Component>(
-                    text: impl Into<String>,
-                    marker: C,
+                fn button<S: Setting>(
+                    setting: S,
                     parent: &mut ChildBuilder,
                     font: Handle<Font>,
                     font_size: f32
@@ -96,11 +95,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             ..default()
                         },
                         AppState::Menu,
-                        marker
+                        setting
                     )).with_children(|parent| {
                         parent.spawn(
                             TextBundle::from_section(
-                                text,
+                                setting.to_string(),
                                 TextStyle {
                                     font,
                                     font_size,
@@ -125,7 +124,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                         ..default()
                     })
                     .with_children(|parent| {
-                        button("One Player", GameMode::OnePlayer, parent, font.clone(), 60.0);
+                        button(GameMode::OnePlayer, parent, font.clone(), 60.0);
 
                         parent.spawn(NodeBundle {
                             style: Style {
@@ -137,9 +136,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             },
                             ..default()
                         }).with_children(|parent| {
-                            button("Easy", Difficulty::Easy, parent, font.clone(), 40.0);
-                            button("Medium", Difficulty::Medium, parent, font.clone(), 40.0);
-                            button("Hard", Difficulty::Hard, parent, font.clone(), 40.0);
+                            button(Difficulty::Easy, parent, font.clone(), 40.0);
+                            button(Difficulty::Medium, parent, font.clone(), 40.0);
+                            button(Difficulty::Hard, parent, font.clone(), 40.0);
                         });
 
                         parent.spawn(NodeBundle {
@@ -153,11 +152,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                             },
                             ..default()
                         }).with_children(|parent| {
-                            button("Human X", HumanMark::HumanX, parent, font.clone(), 40.0);
-                            button("Human O", HumanMark::HumanO, parent, font.clone(), 40.0);
+                            button(HumanMark::HumanX, parent, font.clone(), 40.0);
+                            button(HumanMark::HumanO, parent, font.clone(), 40.0);
                         });
 
-                        button("Two Players", GameMode::TwoPlayers, parent, font.clone(), 60.0);
+                        button(GameMode::TwoPlayers, parent, font.clone(), 60.0);
                     });
             });
     });
