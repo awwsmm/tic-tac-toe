@@ -222,8 +222,8 @@ fn update_mark(
 ) {
     for (interaction, new_mark) in &query {
         if let Interaction::Pressed = interaction {
-            *mark = new_mark.clone();
-            info!("Updated human mark to: {:?}", mark.clone());
+            *mark = *new_mark;
+            info!("Updated human mark to: {}", *mark);
         }
     }
 }
@@ -234,8 +234,8 @@ fn update_difficulty(
 ) {
     for (interaction, new_difficulty) in &query {
         if let Interaction::Pressed = interaction {
-            *difficulty = new_difficulty.clone();
-            info!("Updated difficulty to: {:?}", difficulty.clone());
+            *difficulty = *new_difficulty;
+            info!("Updated difficulty to: {}", *difficulty);
         }
     }
 }
@@ -248,7 +248,7 @@ fn start(
 ) {
     for (interaction, mode) in &mut query {
         if let Interaction::Pressed = interaction {
-            *game_mode = mode.clone();
+            *game_mode = *mode;
             app_state.set(AppState::Game)
         }
     }

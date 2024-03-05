@@ -12,14 +12,23 @@ enum AppState {
     Game,
 }
 
-#[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Resource, Component, Clone, Copy, Default, PartialEq, Eq)]
 enum HumanMark {
     #[default]
     HumanX,
     HumanO
 }
 
-#[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+impl std::fmt::Display for HumanMark {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            HumanMark::HumanX => "Human X",
+            HumanMark::HumanO => "Human O",
+        })
+    }
+}
+
+#[derive(Resource, Component, Clone, Copy, Default, PartialEq, Eq)]
 enum Difficulty {
     Easy,
     Medium,
@@ -27,11 +36,30 @@ enum Difficulty {
     Hard,
 }
 
-#[derive(Resource, Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+impl std::fmt::Display for Difficulty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Difficulty::Easy => "Easy",
+            Difficulty::Medium => "Medium",
+            Difficulty::Hard => "Hard",
+        })
+    }
+}
+
+#[derive(Resource, Component, Clone, Copy, Default, PartialEq, Eq)]
 enum GameMode {
     OnePlayer,
     #[default]
     TwoPlayers,
+}
+
+impl std::fmt::Display for GameMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            GameMode::OnePlayer => "One Player",
+            GameMode::TwoPlayers => "Two Players",
+        })
+    }
 }
 
 trait Enumerated {

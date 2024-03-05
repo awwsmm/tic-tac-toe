@@ -576,7 +576,7 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
 
     let chosen_cell = Cell::variants()[index];
 
-    info!("optimal cell for computer to choose is {:?} (on {:?} mode)", chosen_cell, difficulty);
+    info!("optimal cell for computer to choose is {:?} (on {} mode)", chosen_cell, difficulty);
 
     chosen_cell
 }
@@ -619,7 +619,7 @@ fn capture_input(
             let (entity, cell) = cells.iter().filter(|(_, c)| c == &&cell).next().expect("could not find clicked cell in all cells");
 
             // ...and mark the cell as clicked by that player
-            info.game.set(cell.clone(), mark);
+            info.game.set(*cell, mark);
             info!("{:?} was hit", cell);
 
             // draw the mark on the board
