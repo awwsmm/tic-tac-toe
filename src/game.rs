@@ -130,7 +130,7 @@ impl Line {
     }
 }
 
-#[derive(Component, Default, PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(Component, Default, PartialEq, Eq, Clone, Copy, Hash)]
 enum Mark {
     #[default]
     X,
@@ -201,7 +201,7 @@ mod game {
                     .collect::<HashSet<Mark>>();
 
                 if marks.len() == 3 && unique_marks.len() == 1 {
-                    return Some((marks.get(0).unwrap().clone(), line))
+                    return Some((*marks.get(0).unwrap(), line))
                 };
             }
 
@@ -513,7 +513,7 @@ fn generate_computer_input(game: &game::Game, computer: Mark, difficulty: Diffic
         Difficulty::Medium => {
             // randomly pick best-possible and worst-possible moves
             let mut rng = thread_rng();
-            [-1, 1].choose(&mut rng).expect("array is non-empty, so we should always get a value").clone()
+            *[-1, 1].choose(&mut rng).expect("array is non-empty, so we should always get a value")
         },
         Difficulty::Hard => 1, // pick the best possible moves
     };
@@ -647,7 +647,7 @@ fn capture_input(
                     }
                     Some((mark, line)) => {
                         let [from, .., to] = line.cells();
-                        info!("The winner is {:?} along the line {:?} -> {:?}", mark, from, to);
+                        info!("The winner is {} along the line {:?} -> {:?}", mark, from, to);
                     }
                 }
 
