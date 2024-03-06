@@ -57,11 +57,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
                 ..default()
             }).with_children(|parent| {
-
-            letter(parent, word[0], font.clone());
-            letter(parent, word[1], font.clone());
-            letter(parent, word[2], font.clone());
-        });
+                letter(parent, word[0], font.clone());
+                letter(parent, word[1], font.clone());
+                letter(parent, word[2], font.clone());
+            });
     }
 
     draw_screen(&mut commands, AppState::Menu).with_children(|parent| {
@@ -178,6 +177,7 @@ fn hover_setting_button<T: Setting>(
     }
 }
 
+// different from hover_setting_button because we don't want to show the "selected" game mode
 fn hover_start_button(
     mut buttons: Query<(&Interaction, &mut BorderColor), With<GameMode>>,
 ) {
