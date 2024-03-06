@@ -3,7 +3,7 @@ use bevy::prelude::{Component, Resource};
 use crate::Enumerated;
 
 // A Setting is any enum which (1) has a variants() method, (2) can be Displayed, and (3) is a Component
-pub trait Setting: std::fmt::Display + Component + Clone + Copy {}
+pub trait Setting: Resource + Component + Enumerated + Clone + Copy + PartialEq + Eq + std::fmt::Display {}
 
 #[derive(Resource, Component, Enumerated, Clone, Copy, Default, PartialEq, Eq)]
 pub enum HumanMark {

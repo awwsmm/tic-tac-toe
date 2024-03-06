@@ -1,16 +1,16 @@
 use bevy::prelude::*;
 
-use crate::{AppState, clear_entities, draw_screen};
+use crate::{AppState, clear_entities, draw_screen, Enumerated};
 use crate::settings::{Difficulty, GameMode, HumanMark, Setting};
 
 pub fn plugin(app: &mut App) {
     app
         .add_systems(OnEnter(AppState::Menu), setup)
-        .add_systems(Update, update_mark.run_if(in_state(AppState::Menu)))
-        .add_systems(Update, hover_mark_button.run_if(in_state(AppState::Menu)))
-        .add_systems(Update, hover_difficulty_button.run_if(in_state(AppState::Menu)))
+        .add_systems(Update, update_setting::<HumanMark>.run_if(in_state(AppState::Menu)))
+        .add_systems(Update, hover_setting_button::<HumanMark>.run_if(in_state(AppState::Menu)))
+        .add_systems(Update, hover_setting_button::<Difficulty>.run_if(in_state(AppState::Menu)))
         .add_systems(Update, hover_start_button.run_if(in_state(AppState::Menu)))
-        .add_systems(Update, update_difficulty.run_if(in_state(AppState::Menu)))
+        .add_systems(Update, update_setting::<Difficulty>.run_if(in_state(AppState::Menu)))
         .add_systems(Update, start.run_if(in_state(AppState::Menu)))
         .add_systems(OnExit(AppState::Menu), clear_entities::<AppState>);
 }
@@ -127,34 +127,30 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     .with_children(|parent| {
                         button(GameMode::OnePlayer, parent, font.clone(), 60.0);
 
-                        parent.spawn(NodeBundle {
-                            style: Style {
-                                width: Val::Percent(100.0),
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                justify_content: JustifyContent::SpaceEvenly,
+                        fn settings_row<S: Setting>(parent: &mut ChildBuilder, font: Handle<Font>) where S: Enumerated<Item = S> {
+                            parent.spawn(NodeBundle {
+                                style: Style {
+                                    width: Val::Percent(100.0),
+                                    flex_direction: FlexDirection::Row,
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::SpaceEvenly,
+                                    ..default()
+                                },
                                 ..default()
-                            },
-                            ..default()
-                        }).with_children(|parent| {
-                            button(Difficulty::Easy, parent, font.clone(), 40.0);
-                            button(Difficulty::Medium, parent, font.clone(), 40.0);
-                            button(Difficulty::Hard, parent, font.clone(), 40.0);
-                        });
+                            }).with_children(|parent| {
+                                for variant in S::variants() {
+                                    button(variant, parent, font.clone(), 40.0);
+                                }
+                            });
+                        }
 
+                        settings_row::<Difficulty>(parent, font.clone());
+                        settings_row::<HumanMark>(parent, font.clone());
+
+                        // just a little bit of space to visually separate 1P and 2P modes
                         parent.spawn(NodeBundle {
-                            style: Style {
-                                width: Val::Percent(100.0),
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                justify_content: JustifyContent::SpaceEvenly,
-                                margin: UiRect::bottom(Val::Px(30.0)),
-                                ..default()
-                            },
+                            style: Style { height: Val::Px(20.0), ..default() },
                             ..default()
-                        }).with_children(|parent| {
-                            button(HumanMark::HumanX, parent, font.clone(), 40.0);
-                            button(HumanMark::HumanO, parent, font.clone(), 40.0);
                         });
 
                         button(GameMode::TwoPlayers, parent, font.clone(), 60.0);
@@ -163,28 +159,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn hover_difficulty_button(
-    mut buttons: Query<(&Interaction, &mut BorderColor, &Difficulty)>,
-    selected: Res<Difficulty>,
-) {
-    for (interaction, mut color, value) in buttons.iter_mut() {
-        match interaction {
-            Interaction::Hovered => {
-                *color = Color::rgba(0.0, 0.0, 0.0, 0.5).into();
-            }
-            _ if *value == *selected => {
-                *color = Color::rgba(0.0, 0.0, 0.0, 1.0).into();
-            }
-            _ => { // deselect
-                *color = Color::rgba(0.0, 0.0, 0.0, 0.0).into();
-            }
-        }
-    }
-}
-
-fn hover_mark_button(
-    mut buttons: Query<(&Interaction, &mut BorderColor, &HumanMark)>,
-    selected: Res<HumanMark>,
+fn hover_setting_button<T: Setting>(
+    mut buttons: Query<(&Interaction, &mut BorderColor, &T)>,
+    selected: Res<T>,
 ) {
     for (interaction, mut color, value) in buttons.iter_mut() {
         match interaction {
@@ -216,26 +193,14 @@ fn hover_start_button(
     }
 }
 
-fn update_mark(
-    query: Query<(&Interaction, &HumanMark), Changed<Interaction>>,
-    mut mark: ResMut<HumanMark>,
+fn update_setting<T: Setting>(
+    query: Query<(&Interaction, &T), Changed<Interaction>>,
+    mut setting: ResMut<T>,
 ) {
-    for (interaction, new_mark) in &query {
+    for (interaction, new_setting) in &query {
         if let Interaction::Pressed = interaction {
-            *mark = *new_mark;
-            info!("Updated human mark to: {}", *mark);
-        }
-    }
-}
-
-fn update_difficulty(
-    query: Query<(&Interaction, &Difficulty), Changed<Interaction>>,
-    mut difficulty: ResMut<Difficulty>,
-) {
-    for (interaction, new_difficulty) in &query {
-        if let Interaction::Pressed = interaction {
-            *difficulty = *new_difficulty;
-            info!("Updated difficulty to: {}", *difficulty);
+            *setting = *new_setting;
+            info!("New setting: {}", *setting);
         }
     }
 }
