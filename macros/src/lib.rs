@@ -4,6 +4,7 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::*;
 
+// FIXME remove this
 const GRID_SPACING: f32 = 250.0;
 const HALFSIZE: f32 = GRID_SPACING / 2.0;
 

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use macros::Dimension;
@@ -236,6 +238,7 @@ mod game {
 struct StateInfo {
     game: game::Game,
     current_player: Mark,
+    computer_thinking_time: Timer
 }
 
 pub fn plugin(app: &mut App) {
@@ -596,6 +599,7 @@ fn capture_input(
     game_mode: Res<GameMode>,
     human_mark: Res<HumanMark>,
     difficulty: Res<Difficulty>,
+    time: Res<Time>,
 ) {
 
     // if the winner has already been decided, we should ignore user input until a new game is started
@@ -605,8 +609,21 @@ fn capture_input(
     let mark = info.current_player;
 
     let maybe_cell = match *game_mode {
-        GameMode::OnePlayer if !mark.is(*human_mark) => Some(generate_computer_input(&info.game, mark, *difficulty)),
-        _ => capture_user_input(windows, cameras, touch_input, mouse_button_input)
+        GameMode::OnePlayer if !mark.is(*human_mark) => {
+            info.computer_thinking_time.tick(time.delta());
+
+            if info.computer_thinking_time.finished() {
+                Some(generate_computer_input(&info.game, mark, *difficulty))
+            } else {
+                None
+            }
+        },
+        _ => {
+            let user_input = capture_user_input(windows, cameras, touch_input, mouse_button_input);
+            info.computer_thinking_time.set_duration(Duration::from_millis(400)); // feels about right?
+            info.computer_thinking_time.reset();
+            user_input
+        }
     };
 
     // the computer will always select a cell, but the human might not
